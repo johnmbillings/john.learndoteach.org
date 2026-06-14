@@ -42,6 +42,7 @@ function noteLabel(midi) {
 let lowMidi = 48, highMidi = 72;
 
 function build(rangeKey) {
+  clearHeard(); // drop any mic highlight bound to keys we're about to replace
   [lowMidi, highMidi] = RANGES[rangeKey] || RANGES['2'];
   kbd.innerHTML = '';
   for (let m = lowMidi; m <= highMidi; m++) {
@@ -346,9 +347,12 @@ function tick(ts) {
   }
 
   if (curMidi == null) return;
+  // A key the user is actually pressing owns the `now` readout; the tuner only
+  // writes it when nothing is held, so the two don't clobber each other.
+  const free = pointers.size === 0 && downKeys.size === 0;
   // Drop the highlight only after a short hold, so the momentary detection
   // dropouts between and within notes don't make the key flicker.
-  if (ts - lastGoodTs > HOLD_MS) { clearHeard(); now.textContent = ' '; return; }
+  if (ts - lastGoodTs > HOLD_MS) { clearHeard(); if (free) now.textContent = ' '; return; }
 
   // Up = sharp, down = flat. CSS background-position-y grows downward, so a
   // positive (sharp) reading must subtract to drift the stripes upward.
@@ -356,7 +360,7 @@ function tick(ts) {
   litKey.style.setProperty('--strobe', strobeOffset.toFixed(1) + 'px');
   const inTune = Math.abs(smoothedCents) < IN_TUNE_CENTS;
   litKey.classList.toggle('in-tune', inTune);
-  now.textContent = noteLabel(curMidi) + (inTune ? ' · in tune'
+  if (free) now.textContent = noteLabel(curMidi) + (inTune ? ' · in tune'
     : ' · ' + (smoothedCents > 0 ? '+' : '') + Math.round(smoothedCents) + '¢');
 }
 
@@ -380,6 +384,14 @@ async function startMic() {
   micStream = stream;
   micCtx = new (window.AudioContext || window.webkitAudioContext)();
   analyser = micCtx.createAnalyser();
+  // getFloatTimeDomainData arrived in Safari 14.1; bail clearly on anything older
+  // rather than throwing every frame inside the loop.
+  if (typeof analyser.getFloatTimeDomainData !== 'function') {
+    stopMic();
+    micToggle.checked = false;
+    now.textContent = 'listen needs a newer browser';
+    return;
+  }
   analyser.fftSize = 2048;
   micBuf = new Float32Array(analyser.fftSize);
   micCtx.createMediaStreamSource(micStream).connect(analyser);
@@ -388,6 +400,7 @@ async function startMic() {
   lastGoodTs = 0;
   curMidi = null;
   strobeOffset = 0;
+  if (rafId) cancelAnimationFrame(rafId); // never run two loops at once
   rafId = requestAnimationFrame(tick);
 }
 
@@ -403,6 +416,16 @@ function stopMic() {
 
 micToggle.addEventListener('change', e => {
   if (e.target.checked) startMic(); else stopMic();
+});
+
+// iOS suspends/interrupts the mic context when the tab is backgrounded; resume
+// it on return (the synth has its own resume in audio.js, but this context
+// isn't registered there). Reset the frame clock so the strobe doesn't lurch.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && micCtx && micCtx.state !== 'running') {
+    micCtx.resume().catch(() => {});
+    lastFrameTs = performance.now();
+  }
 });
 
 build('2');

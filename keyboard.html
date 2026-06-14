@@ -178,6 +178,8 @@
       pointer-events: none;
       padding-bottom: 7px;
       display: none;
+      position: relative; /* keep the name above the listen-mode strobe overlay */
+      z-index: 2;
     }
     .label.tonic { display: block; color: #555; }
     .keyboard.show-labels .label { display: block; }
