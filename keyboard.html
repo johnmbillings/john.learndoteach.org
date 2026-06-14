@@ -142,12 +142,44 @@
     }
     .white.on { background: linear-gradient(#bfe6ff, #9cd8ff); }
     .black.on { background: linear-gradient(#6fb4d6, #2f6f8f); }
+
+    /* Mic "listen" mode: the heard key glows blue and a vertical strobe drifts
+       across it — up = sharp, down = flat, frozen = in tune. The drift is driven
+       from JS via the --strobe background offset; the .in-tune class greens the
+       stripes as a second (colourblind-friendly) lock cue. */
+    .white.hear { background: linear-gradient(#bfe6ff, #9cd8ff); }
+    .black.hear { background: linear-gradient(#6fb4d6, #2f6f8f); }
+    .key.hear::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      z-index: 1;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(16, 38, 64, 0.6) 0,
+        rgba(16, 38, 64, 0.6) 9px,
+        rgba(255, 255, 255, 0) 9px,
+        rgba(255, 255, 255, 0) 18px);
+      background-position-y: var(--strobe, 0px);
+    }
+    .key.hear.in-tune::after {
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(18, 84, 40, 0.6) 0,
+        rgba(18, 84, 40, 0.6) 9px,
+        rgba(255, 255, 255, 0) 9px,
+        rgba(255, 255, 255, 0) 18px);
+    }
     .label {
       font-size: 0.72rem;
       color: #777;
       pointer-events: none;
       padding-bottom: 7px;
       display: none;
+      position: relative; /* keep the name above the listen-mode strobe overlay */
+      z-index: 2;
     }
     .label.tonic { display: block; color: #555; }
     .keyboard.show-labels .label { display: block; }
@@ -199,7 +231,7 @@
   <a class="back" href="index.html">← back</a>
 
   <h1>keyboard</h1>
-  <p class="hint">click, tap, or play with your computer keyboard (a&ndash;k row); z / x shift octave</p>
+  <p class="hint">click, tap, or play with your computer keyboard (a&ndash;k row); z / x shift octave<br>flip <em>listen</em> to tune by ear &mdash; sing or play a note and the strobe drifts up if sharp, down if flat</p>
 
   <div class="controls">
     <label class="ctl">
@@ -231,6 +263,11 @@
       <input id="labels" type="checkbox">
       <span class="track"><span class="thumb"></span></span>
       note names
+    </label>
+    <label class="switch">
+      <input id="mic" type="checkbox">
+      <span class="track"><span class="thumb"></span></span>
+      listen
     </label>
   </div>
 
