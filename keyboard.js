@@ -243,4 +243,142 @@ function confetti() {
 testBtn.addEventListener('click', startRound);
 replayBtn.addEventListener('click', playTarget);
 
+// --- Microphone tuner ("listen" mode) ---------------------------------------
+// Listen to the mic, detect the sung/played pitch by autocorrelation, light up
+// the nearest key, and drive a vertical strobe whose drift encodes how far off
+// it is: up = sharp, down = flat, frozen = in tune. Monophonic (one pitch at a
+// time), so exactly one key ever animates. Uses its own AudioContext, separate
+// from the synth's, and only runs while the toggle is on.
+const micToggle = document.getElementById('mic');
+let micStream = null, micCtx = null, analyser = null, micBuf = null, rafId = null;
+let litKey = null;       // the key element currently highlighted by the mic
+let strobeOffset = 0;    // accumulated strobe background-position (px)
+let smoothedCents = 0;   // low-passed cents, so the drift glides
+let lastFrameTs = 0;
+
+// px/sec of strobe drift per cent of error. 50¢ (max) ≈ 300 px/s over an 18px
+// stripe — a fast blur; a few cents is a slow, readable crawl; 0¢ is frozen.
+const STROBE_GAIN = 6;
+const IN_TUNE_CENTS = 4;
+
+function clearHeard() {
+  if (litKey) {
+    litKey.classList.remove('hear', 'in-tune');
+    litKey.style.removeProperty('--strobe');
+    litKey = null;
+  }
+}
+
+// Autocorrelation pitch detector: returns the fundamental in Hz, or -1 when the
+// signal is too quiet or too noisy to call. Rejects on low RMS, trims near-
+// silent edges, takes the first strong correlation peak, then parabolic-
+// interpolates for sub-sample (sub-cent) precision.
+function autoCorrelate(buf, sampleRate) {
+  const SIZE = buf.length;
+  let rms = 0;
+  for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
+  rms = Math.sqrt(rms / SIZE);
+  if (rms < 0.01) return -1; // too quiet to be a real note
+
+  let r1 = 0, r2 = SIZE - 1;
+  const thres = 0.2;
+  for (let i = 0; i < SIZE / 2; i++) if (Math.abs(buf[i]) < thres) { r1 = i; break; }
+  for (let i = 1; i < SIZE / 2; i++) if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; }
+  const b = buf.slice(r1, r2);
+  const n = b.length;
+  if (n < 8) return -1;
+
+  const c = new Float32Array(n);
+  for (let i = 0; i < n; i++)
+    for (let j = 0; j < n - i; j++)
+      c[i] += b[j] * b[j + i];
+
+  let d = 0;
+  while (d < n - 1 && c[d] > c[d + 1]) d++; // skip the zero-lag descent
+  let maxval = -1, maxpos = -1;
+  for (let i = d; i < n; i++) if (c[i] > maxval) { maxval = c[i]; maxpos = i; }
+  if (maxpos <= 0 || maxpos >= n - 1) return -1;
+
+  let T0 = maxpos;
+  const x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
+  const a = (x1 + x3 - 2 * x2) / 2;
+  const bb = (x3 - x1) / 2;
+  if (a) T0 = T0 - bb / (2 * a);
+
+  return sampleRate / T0;
+}
+
+function tick(ts) {
+  rafId = requestAnimationFrame(tick);
+  const dt = Math.min((ts - lastFrameTs) / 1000, 0.05);
+  lastFrameTs = ts;
+
+  analyser.getFloatTimeDomainData(micBuf);
+  const freq = autoCorrelate(micBuf, micCtx.sampleRate);
+  if (freq <= 0) { clearHeard(); return; }
+
+  const midiFloat = 69 + 12 * Math.log2(freq / 440);
+  const midi = Math.round(midiFloat);
+  const cents = (midiFloat - midi) * 100; // -50..+50 from the nearest key
+  const el = keyEl(midi);
+  if (!el) { clearHeard(); return; } // outside the current keyboard range
+
+  if (el !== litKey) {
+    clearHeard();
+    litKey = el;
+    el.classList.add('hear');
+    strobeOffset = 0;
+    smoothedCents = cents;
+  } else {
+    smoothedCents += (cents - smoothedCents) * 0.25;
+  }
+
+  // Up = sharp, down = flat. CSS background-position-y grows downward, so a
+  // positive (sharp) reading must subtract to drift the stripes upward.
+  strobeOffset -= smoothedCents * STROBE_GAIN * dt;
+  el.style.setProperty('--strobe', strobeOffset.toFixed(1) + 'px');
+
+  const inTune = Math.abs(smoothedCents) < IN_TUNE_CENTS;
+  el.classList.toggle('in-tune', inTune);
+  now.textContent = noteLabel(midi) + (inTune ? ' · in tune'
+    : ' · ' + (smoothedCents > 0 ? '+' : '') + Math.round(smoothedCents) + '¢');
+}
+
+async function startMic() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    micToggle.checked = false;
+    now.textContent = 'mic unavailable';
+    return;
+  }
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+    });
+  } catch (e) {
+    micToggle.checked = false;
+    now.textContent = 'mic blocked';
+    return;
+  }
+  micCtx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = micCtx.createAnalyser();
+  analyser.fftSize = 2048;
+  micBuf = new Float32Array(analyser.fftSize);
+  micCtx.createMediaStreamSource(micStream).connect(analyser);
+  lastFrameTs = performance.now();
+  rafId = requestAnimationFrame(tick);
+}
+
+function stopMic() {
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  if (micCtx) { try { micCtx.close(); } catch (e) {} micCtx = null; }
+  analyser = null; micBuf = null;
+  clearHeard();
+  now.textContent = ' ';
+}
+
+micToggle.addEventListener('change', e => {
+  if (e.target.checked) startMic(); else stopMic();
+});
+
 build('2');
