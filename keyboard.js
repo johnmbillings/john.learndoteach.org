@@ -252,14 +252,18 @@ replayBtn.addEventListener('click', playTarget);
 const micToggle = document.getElementById('mic');
 let micStream = null, micCtx = null, analyser = null, micBuf = null, rafId = null;
 let litKey = null;       // the key element currently highlighted by the mic
+let curMidi = null;      // its MIDI number (null = nothing heard right now)
 let strobeOffset = 0;    // accumulated strobe background-position (px)
 let smoothedCents = 0;   // low-passed cents, so the drift glides
-let lastFrameTs = 0;
+let lastFrameTs = 0, lastDetectTs = 0, lastGoodTs = 0;
+let micGen = 0;          // bumped on each start/stop to abandon stale async starts
 
 // px/sec of strobe drift per cent of error. 50¢ (max) ≈ 300 px/s over an 18px
 // stripe — a fast blur; a few cents is a slow, readable crawl; 0¢ is frozen.
 const STROBE_GAIN = 6;
 const IN_TUNE_CENTS = 4;
+const DETECT_MS = 30;    // run the O(n²) detector ~33×/s, not once per frame
+const HOLD_MS = 250;     // keep the last key lit through brief detection dropouts
 
 function clearHeard() {
   if (litKey) {
@@ -267,6 +271,7 @@ function clearHeard() {
     litKey.style.removeProperty('--strobe');
     litKey = null;
   }
+  curMidi = null;
 }
 
 // Autocorrelation pitch detector: returns the fundamental in Hz, or -1 when the
@@ -313,34 +318,45 @@ function tick(ts) {
   const dt = Math.min((ts - lastFrameTs) / 1000, 0.05);
   lastFrameTs = ts;
 
-  analyser.getFloatTimeDomainData(micBuf);
-  const freq = autoCorrelate(micBuf, micCtx.sampleRate);
-  if (freq <= 0) { clearHeard(); return; }
-
-  const midiFloat = 69 + 12 * Math.log2(freq / 440);
-  const midi = Math.round(midiFloat);
-  const cents = (midiFloat - midi) * 100; // -50..+50 from the nearest key
-  const el = keyEl(midi);
-  if (!el) { clearHeard(); return; } // outside the current keyboard range
-
-  if (el !== litKey) {
-    clearHeard();
-    litKey = el;
-    el.classList.add('hear');
-    strobeOffset = 0;
-    smoothedCents = cents;
-  } else {
-    smoothedCents += (cents - smoothedCents) * 0.25;
+  // Detection is O(n²) per call, so throttle it well below the frame rate; the
+  // strobe still animates every frame from the last good reading (below).
+  if (ts - lastDetectTs >= DETECT_MS) {
+    lastDetectTs = ts;
+    analyser.getFloatTimeDomainData(micBuf);
+    const freq = autoCorrelate(micBuf, micCtx.sampleRate);
+    if (freq > 0) {
+      const midiFloat = 69 + 12 * Math.log2(freq / 440);
+      const midi = Math.round(midiFloat);
+      const cents = (midiFloat - midi) * 100; // -50..+50 from the nearest key
+      const el = keyEl(midi);                 // null if outside the current range
+      if (el) {
+        if (midi !== curMidi) {               // new note: snap rather than smooth across
+          clearHeard();
+          litKey = el;
+          curMidi = midi;
+          el.classList.add('hear');
+          smoothedCents = cents;
+          strobeOffset = 0;
+        } else {
+          smoothedCents += (cents - smoothedCents) * 0.25;
+        }
+        lastGoodTs = ts;
+      }
+    }
   }
+
+  if (curMidi == null) return;
+  // Drop the highlight only after a short hold, so the momentary detection
+  // dropouts between and within notes don't make the key flicker.
+  if (ts - lastGoodTs > HOLD_MS) { clearHeard(); now.textContent = ' '; return; }
 
   // Up = sharp, down = flat. CSS background-position-y grows downward, so a
   // positive (sharp) reading must subtract to drift the stripes upward.
   strobeOffset -= smoothedCents * STROBE_GAIN * dt;
-  el.style.setProperty('--strobe', strobeOffset.toFixed(1) + 'px');
-
+  litKey.style.setProperty('--strobe', strobeOffset.toFixed(1) + 'px');
   const inTune = Math.abs(smoothedCents) < IN_TUNE_CENTS;
-  el.classList.toggle('in-tune', inTune);
-  now.textContent = noteLabel(midi) + (inTune ? ' · in tune'
+  litKey.classList.toggle('in-tune', inTune);
+  now.textContent = noteLabel(curMidi) + (inTune ? ' · in tune'
     : ' · ' + (smoothedCents > 0 ? '+' : '') + Math.round(smoothedCents) + '¢');
 }
 
@@ -350,25 +366,33 @@ async function startMic() {
     now.textContent = 'mic unavailable';
     return;
   }
+  const gen = ++micGen;
+  let stream;
   try {
-    micStream = await navigator.mediaDevices.getUserMedia({
+    stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
     });
   } catch (e) {
-    micToggle.checked = false;
-    now.textContent = 'mic blocked';
+    if (gen === micGen) { micToggle.checked = false; now.textContent = 'mic blocked'; }
     return;
   }
+  if (gen !== micGen) { stream.getTracks().forEach(t => t.stop()); return; } // toggled off while awaiting
+  micStream = stream;
   micCtx = new (window.AudioContext || window.webkitAudioContext)();
   analyser = micCtx.createAnalyser();
   analyser.fftSize = 2048;
   micBuf = new Float32Array(analyser.fftSize);
   micCtx.createMediaStreamSource(micStream).connect(analyser);
   lastFrameTs = performance.now();
+  lastDetectTs = 0;
+  lastGoodTs = 0;
+  curMidi = null;
+  strobeOffset = 0;
   rafId = requestAnimationFrame(tick);
 }
 
 function stopMic() {
+  micGen++;
   if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
   if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
   if (micCtx) { try { micCtx.close(); } catch (e) {} micCtx = null; }
