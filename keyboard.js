@@ -258,6 +258,7 @@ let strobeOffset = 0;    // accumulated strobe background-position (px)
 let smoothedCents = 0;   // low-passed cents, so the drift glides
 let lastFrameTs = 0, lastDetectTs = 0, lastGoodTs = 0;
 let micGen = 0;          // bumped on each start/stop to abandon stale async starts
+let inputLevel = 0;      // peak mic amplitude (0..1), shown so a live mic is obvious
 
 // px/sec of strobe drift per cent of error. 50¢ (max) ≈ 300 px/s over an 18px
 // stripe — a fast blur; a few cents is a slow, readable crawl; 0¢ is frozen.
@@ -284,7 +285,7 @@ function autoCorrelate(buf, sampleRate) {
   let rms = 0;
   for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
   rms = Math.sqrt(rms / SIZE);
-  if (rms < 0.01) return -1; // too quiet to be a real note
+  if (rms < 0.006) return -1; // too quiet to be a real note (Bluetooth mics run low)
 
   let r1 = 0, r2 = SIZE - 1;
   const thres = 0.2;
@@ -324,6 +325,9 @@ function tick(ts) {
   if (ts - lastDetectTs >= DETECT_MS) {
     lastDetectTs = ts;
     analyser.getFloatTimeDomainData(micBuf);
+    let peak = 0;
+    for (let i = 0; i < micBuf.length; i++) { const x = Math.abs(micBuf[i]); if (x > peak) peak = x; }
+    inputLevel = peak;
     const freq = autoCorrelate(micBuf, micCtx.sampleRate);
     if (freq > 0) {
       const midiFloat = 69 + 12 * Math.log2(freq / 440);
@@ -346,13 +350,19 @@ function tick(ts) {
     }
   }
 
-  if (curMidi == null) return;
   // A key the user is actually pressing owns the `now` readout; the tuner only
   // writes it when nothing is held, so the two don't clobber each other.
   const free = pointers.size === 0 && downKeys.size === 0;
   // Drop the highlight only after a short hold, so the momentary detection
   // dropouts between and within notes don't make the key flicker.
-  if (ts - lastGoodTs > HOLD_MS) { clearHeard(); if (free) now.textContent = ' '; return; }
+  if (curMidi != null && ts - lastGoodTs > HOLD_MS) clearHeard();
+
+  if (curMidi == null) {
+    // Idle: show the live input level so it's obvious the mic is being heard —
+    // especially with quiet Bluetooth headset mics where 0% means no signal.
+    if (free) now.textContent = 'listening… ' + Math.round(inputLevel * 100) + '%';
+    return;
+  }
 
   // Up = sharp, down = flat. CSS background-position-y grows downward, so a
   // positive (sharp) reading must subtract to drift the stripes upward.
@@ -371,30 +381,52 @@ async function startMic() {
     return;
   }
   const gen = ++micGen;
+  // Create AND resume the context now, while we're still inside the toggle's
+  // user gesture. If we waited until after the await below, iOS/Safari would
+  // start the context suspended and the analyser would only ever read silence —
+  // the exact symptom of "mic allowed but no pitch", common over Bluetooth.
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  ctx.resume().catch(() => {});
   let stream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
     });
   } catch (e) {
+    try { ctx.close(); } catch (_) {}
     if (gen === micGen) { micToggle.checked = false; now.textContent = 'mic blocked'; }
     return;
   }
-  if (gen !== micGen) { stream.getTracks().forEach(t => t.stop()); return; } // toggled off while awaiting
-  micStream = stream;
-  micCtx = new (window.AudioContext || window.webkitAudioContext)();
-  analyser = micCtx.createAnalyser();
-  // getFloatTimeDomainData arrived in Safari 14.1; bail clearly on anything older
-  // rather than throwing every frame inside the loop.
-  if (typeof analyser.getFloatTimeDomainData !== 'function') {
-    stopMic();
+  if (gen !== micGen) { // toggled off while awaiting
+    stream.getTracks().forEach(t => t.stop());
+    try { ctx.close(); } catch (_) {}
+    return;
+  }
+  const a = ctx.createAnalyser();
+  // getFloatTimeDomainData arrived in Safari 14.1; bail clearly on anything
+  // older rather than throwing every frame inside the loop.
+  if (typeof a.getFloatTimeDomainData !== 'function') {
+    stream.getTracks().forEach(t => t.stop());
+    try { ctx.close(); } catch (_) {}
     micToggle.checked = false;
     now.textContent = 'listen needs a newer browser';
     return;
   }
-  analyser.fftSize = 2048;
-  micBuf = new Float32Array(analyser.fftSize);
-  micCtx.createMediaStreamSource(micStream).connect(analyser);
+  a.fftSize = 2048;
+  // source → analyser → muted sink → destination. Safari only pumps an analyser
+  // whose graph reaches the destination; the gain-0 sink keeps it live without
+  // us ever hearing the mic (no feedback).
+  const sink = ctx.createGain();
+  sink.gain.value = 0;
+  ctx.createMediaStreamSource(stream).connect(a);
+  a.connect(sink).connect(ctx.destination);
+  ctx.resume().catch(() => {});
+
+  micCtx = ctx;
+  micStream = stream;
+  analyser = a;
+  micBuf = new Float32Array(a.fftSize);
+  inputLevel = 0;
   lastFrameTs = performance.now();
   lastDetectTs = 0;
   lastGoodTs = 0;
