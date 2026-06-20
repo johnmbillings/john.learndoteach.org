@@ -65,6 +65,28 @@ const AudioKit = (() => {
     window.addEventListener('pageshow', resumeCtxs);
   }
 
+  // A single metronome tick scheduled on the shared sequence clock at time `t`.
+  // A short high "click" (square burst with a near-instant decay) so it cuts
+  // through the sustained cello tone; the downbeat is pitched up and a touch
+  // louder. Registered in activeVoices so stopSequence() silences any ticks
+  // still pending in the future when playback is stopped.
+  function scheduleClick(ctx, t, accent) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = accent ? 2000 : 1400;
+    const peak = accent ? 0.22 : 0.13;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(peak, t + 0.001);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.06);
+    const rec = { osc, gain };
+    activeVoices.push(rec);
+    osc.onended = () => { const k = activeVoices.indexOf(rec); if (k >= 0) activeVoices.splice(k, 1); };
+  }
+
   // Stop the current scale: cancel pending visual callbacks and fade out any
   // scheduled oscillators. Safe to call when nothing is playing.
   function stopSequence() {
@@ -113,7 +135,10 @@ const AudioKit = (() => {
   // release (release length, s), onNote(semi, i) fired as each note sounds,
   // when (absolute audio-clock start time; default = now + 0.05), chain (true =
   // keep the previous sequence's voices instead of stopping them, for gapless
-  // looping). Returns the audio-clock time the next contiguous note would start
+  // looping), clickInterval (beat length in s; >0 adds a metronome tick on each
+  // beat across this pass, locked to the note grid), clickAccent (accent the
+  // pass's first tick — the downbeat where the tonic sounds). Returns the
+  // audio-clock time the next contiguous note would start
   // (= start + seq.length * step), so a loop can schedule the next pass exactly.
   function playSequence(baseMidi, seq, opts = {}) {
     const ctx = getSeqCtx();
@@ -164,6 +189,17 @@ const AudioKit = (() => {
         seqTimers.push(id);
       }
     });
+    // Metronome ticks, locked to the same start as the notes. Beats are a coarser
+    // grid than the note subdivision, so a tick can fall between notes (e.g. four
+    // ticks under a whole note). Round the pass to a whole number of beats so the
+    // grid resets cleanly at each loop seam, keeping the tonic on the downbeat.
+    if (opts.clickInterval > 0) {
+      const dur = seq.length * step;
+      const beats = Math.max(1, Math.round(dur / opts.clickInterval));
+      for (let b = 0; b < beats; b++) {
+        scheduleClick(ctx, start + b * opts.clickInterval, !!opts.clickAccent && b === 0);
+      }
+    }
     return start + seq.length * step;
   }
 

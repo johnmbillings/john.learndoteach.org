@@ -148,6 +148,7 @@ const { pitchToMidi } = AudioKit;
 // --- scale playback ---
 let autoDescend = false;
 let tempoBpm = 112;
+let metronomeOn = false; // audible click on each beat while a scale plays
 let articulation = 'legato';
 let loopOn = false;
 let repeatEnds = false; // when looping, repeat the turnaround (top/bottom) notes
@@ -266,6 +267,8 @@ function schedulePass(baseMidi, makeSeq, rowReadout, namer, when, chain, rowStaf
     release: art.release,
     when,
     chain,
+    clickInterval: metronomeOn ? 60 / tempoBpm : 0,
+    clickAccent: true, // accent each pass's first beat (the tonic downbeat)
     onNote: (semi) => {
       const name = namer(semi);
       if (center) center.textContent = name;
@@ -665,6 +668,13 @@ function initScaleOptions() {
     if (Number.isFinite(v) && v > 0) tempoBpm = v;
   });
 
+  const metro = document.getElementById('metronome');
+  metronomeOn = metro.checked; // honor a restored value
+  metro.addEventListener('change', () => {
+    metronomeOn = metro.checked;
+    restartIfLooping(); // start/stop ticks immediately on a running loop
+  });
+
   const subdiv = document.getElementById('subdiv');
   const subdivVal = document.getElementById('subdiv-val');
   const showSubdiv = () => {
@@ -732,6 +742,7 @@ const PREFS = [
   { id: 'toggle-extra',  key: 'extra',       kind: 'bool',   ev: 'change' },
   { id: 'octaves',       key: 'octaves',     kind: 'num', min: 1,  max: 3,   ev: 'input' },
   { id: 'tempo',         key: 'tempo',       kind: 'num', min: 40, max: 300, ev: 'input' },
+  { id: 'metronome',     key: 'metronome',   kind: 'bool',   ev: 'change' },
   { id: 'subdiv',        key: 'subdiv',      kind: 'num', min: 0,  max: SUBDIVS.length - 1, ev: 'input' },
   { id: 'loop',          key: 'loop',        kind: 'bool',   ev: 'change' },
   { id: 'repeat-ends',   key: 'repeatEnds',  kind: 'bool',   ev: 'change' },
