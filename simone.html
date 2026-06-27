@@ -131,6 +131,39 @@
     }
     .radio input { accent-color: #9cd8ff; width: 1.05em; height: 1.05em; }
 
+    /* tuning toggle: pure (just) ⇄ equal temperament */
+    .switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5em;
+      cursor: pointer;
+      user-select: none;
+    }
+    .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .switch .opt { transition: color 0.15s; }
+    .switch .opt.active { color: #9cd8ff; }
+    .switch .track {
+      width: 2.4em;
+      height: 1.2em;
+      border: 1px solid #666;
+      border-radius: 1em;
+      position: relative;
+      transition: border-color 0.15s;
+    }
+    .switch .thumb {
+      position: absolute;
+      top: 50%;
+      left: 0.15em;
+      width: 0.9em;
+      height: 0.9em;
+      transform: translateY(-50%);
+      background: #9cd8ff;
+      border-radius: 50%;
+      transition: left 0.15s;
+    }
+    .switch input:checked + .track .thumb { left: calc(100% - 1.05em); }
+    .switch:hover .track { border-color: #9cd8ff; }
+
     button {
       background: none;
       border: 1px solid #666;
@@ -150,7 +183,7 @@
   <a class="back" href="index.html">← back</a>
 
   <h1>simón</h1>
-  <p class="hint">turn the dial from 20 Hz to 20,000 Hz, then press start<br>add a major third or a perfect fifth above the tone</p>
+  <p class="hint">turn the dial from 20 Hz to 20,000 Hz, then press start<br>add a major third or a perfect fifth above the tone &mdash; in pure (just) ratios or equal temperament</p>
 
   <div class="dial-wrap">
     <div class="dial" id="dial" role="slider" tabindex="0"
@@ -174,6 +207,15 @@
     </label>
     <label class="radio">
       <input type="radio" name="harmony" value="fifth"> + fifth
+    </label>
+  </div>
+
+  <div class="controls">
+    <label class="switch" title="how the third/fifth are tuned above the tone">
+      <span class="opt active" id="opt-pure">pure</span>
+      <input id="temperament" type="checkbox">
+      <span class="track"><span class="thumb"></span></span>
+      <span class="opt" id="opt-equal">equal temperament</span>
     </label>
   </div>
 
@@ -252,15 +294,26 @@
     }, { passive: false });
 
     // ---- audio ---------------------------------------------------------------
-    // A root oscillator, optionally joined by an interval a major third
-    // (2^(4/12)) or perfect fifth (2^(7/12)) above it.
-    const RATIOS = { third: Math.pow(2, 4 / 12), fifth: Math.pow(2, 7 / 12) };
+    // A root oscillator, optionally joined by an interval a major third or
+    // perfect fifth above it. The interval ratio depends on the tuning toggle:
+    //   pure (just intonation): 5/4 and 3/2 — beat-free, whole-number ratios
+    //   equal temperament:      2^(4/12) and 2^(7/12) — the piano's compromise
+    const RATIOS = {
+      pure:  { third: 5 / 4,              fifth: 3 / 2 },
+      equal: { third: Math.pow(2, 4 / 12), fifth: Math.pow(2, 7 / 12) },
+    };
+    const temperament = document.getElementById('temperament');
+    const optPure = document.getElementById('opt-pure');
+    const optEqual = document.getElementById('opt-equal');
+
     let ctx = null, root = null, harm = null, master = null;
     let playing = false;
 
     function harmonyMode() {
       return document.querySelector('input[name="harmony"]:checked').value;
     }
+    function tuning() { return temperament.checked ? 'equal' : 'pure'; }
+    function ratioFor(mode) { return RATIOS[tuning()][mode]; }
 
     function start() {
       if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -291,7 +344,7 @@
     function addHarmonic(mode) {
       harm = ctx.createOscillator();
       harm.type = 'sine';
-      harm.frequency.value = freq * RATIOS[mode];
+      harm.frequency.value = freq * ratioFor(mode);
       harm.connect(master);
       harm.start();
     }
@@ -322,7 +375,7 @@
       if (!playing) return;
       const now = ctx.currentTime;
       root.frequency.setTargetAtTime(freq, now, 0.01);
-      if (harm) harm.frequency.setTargetAtTime(freq * RATIOS[harmonyMode()] || freq, now, 0.01);
+      if (harm) harm.frequency.setTargetAtTime(freq * ratioFor(harmonyMode()), now, 0.01);
     }
 
     toggle.addEventListener('click', () => playing ? stop() : start());
@@ -337,6 +390,14 @@
           // match the master's running level (no re-fade needed)
         }
       });
+    });
+
+    // tuning toggle: highlight the active side and retune a live harmonic
+    temperament.addEventListener('change', () => {
+      const equal = temperament.checked;
+      optPure.classList.toggle('active', !equal);
+      optEqual.classList.toggle('active', equal);
+      updateTone();
     });
 
     render();
