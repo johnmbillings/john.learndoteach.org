@@ -167,13 +167,12 @@ const ARTIC = {
   legato:   { gate: 1.0,  atk: 0.025, sustain: 0.90, release: 0.06 },
 };
 
-// Expand a chord's four tones into an arpeggio across `octaves`, capped with the
-// top octave root so it turns around cleanly — e.g. maj7 over 1 octave ->
-// 0,4,7,11,12; over 2 -> 0,4,7,11,12,16,19,23,24.
+// Expand a chord's four tones into an arpeggio across `octaves`, topping out on
+// the 7th (not the octave root) so the turnaround lands on the chord's colour
+// tone — e.g. maj7 over 1 octave -> 0,4,7,11; over 2 -> 0,4,7,11,12,16,19,23.
 function expand(chord, n) {
   const out = [];
   for (let o = 0; o < n; o++) for (const iv of chord.intervals) out.push(iv + 12 * o);
-  out.push(12 * n);
   return out;
 }
 
