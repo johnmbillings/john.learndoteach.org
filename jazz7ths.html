@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>jazz 7ths</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
+  <style>
+    /* Bravura: the SMuFL standard music font, self-hosted so clefs/accidentals
+       render identically on every device (no reliance on the browser's fallback
+       glyphs, whose metrics vary). font-display:block briefly waits rather than
+       flashing a mispositioned fallback glyph. See fonts/OFL.txt. */
+    @font-face {
+      font-family: 'Bravura';
+      src: url('fonts/Bravura.woff2') format('woff2');
+      font-display: block;
+    }
+    body {
+      margin: 0;
+      background: #000;
+      color: #fff;
+      font-family: "Cormorant Garamond", serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      padding: 2.5rem 1rem 4rem;
+      box-sizing: border-box;
+    }
+    a { color: #9cd8ff; }
+    .back {
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      font-size: 1rem;
+      color: #666;
+      text-decoration: none;
+    }
+    .back:hover { color: #d8d8ff; }
+
+    h1 {
+      margin: 0;
+      font-size: 2.2rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: lowercase;
+    }
+    .hint {
+      margin: -0.5rem 0 0;
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.5);
+      font-style: italic;
+      text-align: center;
+    }
+
+    #circle {
+      width: min(360px, 92vw);
+      height: auto;
+    }
+    .node circle {
+      fill: #161616;
+      stroke: #555;
+      stroke-width: 1.5;
+      transition: fill 0.15s, stroke 0.15s;
+    }
+    .node text {
+      fill: #cfcfcf;
+      font-size: 18px;
+      font-weight: 500;
+      pointer-events: none;
+    }
+    .node { cursor: pointer; }
+    .node:hover circle { stroke: #9cd8ff; }
+    .node:focus { outline: none; }
+    .node:focus-visible circle { stroke: #9cd8ff; stroke-width: 2.5; }
+    .node .alt { font-size: 12px; fill: rgba(255, 255, 255, 0.55); }
+    .node.selected circle { fill: #9cd8ff; stroke: #9cd8ff; }
+    .node.selected text { fill: #06121c; }
+
+    #playing-note {
+      fill: #9cd8ff;
+      font-size: 44px;
+      font-weight: 500;
+      pointer-events: none;
+    }
+
+    #view-toggles {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.55);
+      z-index: 10;
+    }
+    #clef-toggle { display: none; align-items: center; }
+    .clef-ico { font-size: 1.5rem; line-height: 1; color: rgba(255, 255, 255, 0.75); }
+
+    /* Per-row mini-staff: tucks into the empty space inside .chord-name, just
+       to the left of the played-note readout. Drawn in SVG units (viewBox
+       0 0 80 32); overflow:visible so ledger lines / very high or low
+       noteheads can poke above or below without being clipped. */
+    .row-staff {
+      width: 80px;
+      height: 32px;
+      overflow: visible;
+      flex-shrink: 0;
+      display: none;
+    }
+    body.show-staves .row-staff { display: inline-block; }
+    /* The staff sits in normal flow on the left; the played-note name is taken
+       OUT of flow (absolutely positioned) so it can never shift the staff
+       horizontally, and is centered with a transform so it can't jiggle
+       vertically as the text appears/changes. The container reserves a fixed
+       slot for both, so the staff holds one position throughout playback. */
+    .staff-and-note {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      flex-shrink: 0;
+      width: 3.6ch;                 /* readout-only width when staves are hidden */
+    }
+    body.show-staves .staff-and-note {
+      width: calc(80px + 0.5em + 3.6ch);
+    }
+    .note-readout {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      white-space: nowrap;
+      color: #9cd8ff;
+    }
+    .staff-line { stroke: rgba(255, 255, 255, 0.55); stroke-width: 0.8; }
+    .staff-line.ledger { stroke-width: 1; }
+    /* Clefs and accidentals are Bravura (SMuFL) glyphs. Sizes/baselines are set
+       in jazz7ths.js to staff-relative SMuFL coordinates. */
+    .clef { fill: #eee; font-family: 'Bravura'; }
+    .accidental { fill: #9cd8ff; font-family: 'Bravura'; }
+    .notehead { fill: #9cd8ff; }
+    .note-acc { fill: #9cd8ff; font-family: 'Bravura'; }
+
+    .center {
+      font-size: 1.4rem;
+      letter-spacing: 0.04em;
+    }
+    .center #center-label { color: #9cd8ff; font-size: 1.7rem; }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.7rem 1.4rem;
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.6);
+      margin-top: -0.5rem;
+    }
+    .ctl { display: inline-flex; align-items: center; gap: 0.5em; }
+    .ctl input[type="range"] { width: 6em; }
+    .ctl-val { min-width: 1ch; color: #9cd8ff; }
+    .subdiv-val { min-width: 5.5em; color: #9cd8ff; }
+    .note-eq { font-size: 1.25rem; color: rgba(255, 255, 255, 0.8); }
+    .ctl .unit { opacity: 0.55; }
+    .ctl input[type="number"],
+    .ctl select {
+      background: #000;
+      border: 1px solid #666;
+      color: #ddd;
+      font-family: inherit;
+      font-size: 0.95rem;
+      padding: 0.2em 0.35em;
+    }
+    .ctl input[type="number"] { width: 3.4em; }
+    .ctl input[type="number"]:hover,
+    .ctl select:hover { border-color: #9cd8ff; }
+
+    #chords {
+      width: min(560px, 96vw);
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    /* Each chord occupies a small stacked card: a "head" line (name + staff +
+       play buttons) with the training detail (degrees, example, cello shape)
+       tucked underneath. */
+    .chord-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .chord-head {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+    .chord-name {
+      flex: 1 1 11rem;
+      min-width: 0;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6em;
+    }
+    .chord-detail {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+      font-size: 0.92rem;
+      line-height: 1.35;
+      padding-left: 0.1rem;
+    }
+    .chord-formula { color: rgba(255, 255, 255, 0.6); }
+    .chord-formula .deg { color: rgba(255, 255, 255, 0.8); }
+    .chord-formula .sep { color: rgba(255, 255, 255, 0.3); margin: 0 0.55em; }
+    .chord-formula .ex { color: #9cd8ff; }
+    .chord-cello { color: rgba(255, 255, 255, 0.55); font-style: italic; }
+    .chord-cello .lead {
+      font-style: normal;
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.4);
+      margin-right: 0.5em;
+    }
+    button {
+      background: none;
+      border: 1px solid #666;
+      color: #ddd;
+      font-family: inherit;
+      font-size: 1rem;
+      padding: 0.35em 0.7em;
+      cursor: pointer;
+    }
+    button:hover { border-color: #9cd8ff; color: #fff; }
+    button.playing { border-color: #9cd8ff; color: #9cd8ff; background: rgba(156, 216, 255, 0.12); }
+    .btn-label { margin-left: 0.4em; }
+
+    /* On phones, keep the head line on one line: collapse the play buttons to
+       just their arrows so the name + ascending + descending + note all fit. */
+    @media (max-width: 600px) {
+      .chord-head { flex-wrap: nowrap; gap: 0.4rem; }
+      .chord-name { min-width: 0; }
+      .chord-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .chord-head button { padding: 0.35em 0.55em; }
+      .btn-label { display: none; }
+    }
+
+    .drone {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem 1.1rem;
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.55);
+    }
+    #drone-btn.on { border-color: #c8743c; color: #f0b48a; }
+    .switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45em;
+      cursor: pointer;
+      user-select: none;
+    }
+    .switch input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .switch .track {
+      width: 2.4em;
+      height: 1.2em;
+      border: 1px solid #666;
+      border-radius: 1em;
+      position: relative;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .switch .thumb {
+      position: absolute;
+      top: 50%;
+      left: 0.15em;
+      width: 0.9em;
+      height: 0.9em;
+      transform: translateY(-50%);
+      background: #ddd;
+      border-radius: 50%;
+      transition: left 0.15s, background 0.15s;
+    }
+    .switch input:checked + .track { background: #7a4322; border-color: #c8743c; }
+    .switch input:checked + .track .thumb { left: calc(100% - 1.05em); background: #f0b48a; }
+    .drone-vol { display: inline-flex; align-items: center; gap: 0.5em; }
+    .drone-vol input[type="range"] { width: 6em; }
+  </style>
+</head>
+<body>
+  <a class="back" href="index.html">← back</a>
+
+  <div id="view-toggles">
+    <label class="switch">
+      <input id="toggle-keysig" type="checkbox" checked>
+      <span class="track"><span class="thumb"></span></span>
+      show staff
+    </label>
+    <label class="switch" id="clef-toggle" title="bass / treble clef">
+      <span class="clef-ico">&#x1D122;</span>
+      <input id="toggle-treble" type="checkbox">
+      <span class="track"><span class="thumb"></span></span>
+      <span class="clef-ico">&#x1D11E;</span>
+    </label>
+  </div>
+
+  <h1>jazz 7ths</h1>
+  <p class="hint">pick a root on the circle of fifths, then arpeggiate each 7th chord up or down — degrees, a worked example, and the movable cello shape for each</p>
+
+  <svg id="circle" viewBox="0 0 360 360" aria-label="circle of fifths root picker"></svg>
+
+  <div class="center">root: <span id="center-label">—</span></div>
+
+  <div class="drone">
+    <button id="drone-btn" type="button">drone</button>
+    <label class="switch">
+      <input id="drone-fifth" type="checkbox">
+      <span class="track"><span class="thumb"></span></span>
+      add 5th
+    </label>
+    <label class="drone-vol">
+      vol
+      <input id="drone-volume" type="range" min="0" max="0.4" step="0.01" value="0.1">
+    </label>
+  </div>
+
+  <div class="controls">
+    <label class="ctl">
+      octaves
+      <input id="octaves" type="range" min="1" max="2" step="1" value="1">
+      <span id="octaves-val" class="ctl-val">1</span>
+    </label>
+    <label class="ctl">
+      <span class="note-eq">&#x2669; =</span>
+      <input id="tempo" type="number" min="40" max="300" step="1" value="96">
+    </label>
+    <label class="switch">
+      <input id="metronome" type="checkbox">
+      <span class="track"><span class="thumb"></span></span>
+      metronome
+    </label>
+    <label class="ctl">
+      note
+      <input id="subdiv" type="range" min="0" max="5" step="1" value="2">
+      <span id="subdiv-val" class="subdiv-val">&#x2669; quarter</span>
+    </label>
+    <label class="switch">
+      <input id="loop" type="checkbox">
+      <span class="track"><span class="thumb"></span></span>
+      loop
+    </label>
+    <label class="switch">
+      <input id="auto-descend" type="checkbox">
+      <span class="track"><span class="thumb"></span></span>
+      play down after up
+    </label>
+    <label class="switch">
+      <input id="repeat-ends" type="checkbox">
+      <span class="track"><span class="thumb"></span></span>
+      repeat top &amp; bottom
+    </label>
+    <label class="ctl">
+      articulation
+      <select id="articulation">
+        <option value="staccato">staccato</option>
+        <option value="portato">portato</option>
+        <option value="legato" selected>legato</option>
+      </select>
+    </label>
+  </div>
+
+  <div id="chords"></div>
+
+  <script src="audio.js"></script>
+  <script src="jazz7ths.js"></script>
+</body>
+</html>
