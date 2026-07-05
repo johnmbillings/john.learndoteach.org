@@ -248,15 +248,89 @@
 
     /* --- explainer --- */
     .explain {
-      max-width: 34rem;
-      font-size: 1.02rem;
-      line-height: 1.5;
-      color: rgba(255, 255, 255, 0.72);
-      text-align: center;
+      max-width: 40rem;
+      width: 100%;
+      font-size: 1.05rem;
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.74);
+      text-align: left;
+    }
+    .explain h2 {
+      font-size: 1.25rem;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      color: #9cd8ff;
+      margin: 1.9rem 0 0.5rem;
+    }
+    .explain h2 .num {
+      color: rgba(255, 255, 255, 0.32);
+      margin-right: 0.55em;
+      font-style: italic;
     }
     .explain p { margin: 0.6rem 0; }
+    .explain em { color: rgba(255, 255, 255, 0.92); font-style: italic; }
+    .explain strong { color: #f0f0f0; font-weight: 600; }
     .explain .tonic-name { color: #f0b48a; font-weight: 500; }
     .explain .dom-name { color: #9cd8ff; font-weight: 500; }
+    .explain .lede {
+      font-size: 1.14rem;
+      color: rgba(255, 255, 255, 0.86);
+      font-style: italic;
+    }
+    .explain .kicker {
+      border-left: 2px solid #9cd8ff;
+      padding-left: 0.95rem;
+      margin: 1.6rem 0 0;
+      color: rgba(255, 255, 255, 0.84);
+    }
+
+    /* voice-leading table: the four voices of Dm7 sliding into E♭7 */
+    .vl-wrap { overflow-x: auto; margin: 0.9rem 0 0.3rem; }
+    table.vl {
+      border-collapse: collapse;
+      font-size: 1rem;
+      margin: 0 auto;
+      min-width: 20rem;
+    }
+    table.vl th, table.vl td {
+      padding: 0.32rem 1rem;
+      text-align: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      white-space: nowrap;
+    }
+    table.vl th {
+      color: rgba(255, 255, 255, 0.5);
+      font-weight: 500;
+      font-style: italic;
+    }
+    table.vl .from { color: #eee; }
+    table.vl .to { color: #9cd8ff; }
+    table.vl .deg { color: rgba(255, 255, 255, 0.4); font-size: 0.82rem; font-style: italic; }
+    table.vl .mv { color: rgba(255, 255, 255, 0.6); font-size: 0.92rem; }
+    table.vl .half { color: #f0b48a; }
+    .vl-note {
+      font-size: 0.92rem;
+      color: rgba(255, 255, 255, 0.55);
+      font-style: italic;
+      text-align: center;
+      margin: 0.25rem 0 0.6rem;
+    }
+
+    /* big-picture chain diagram */
+    .chain-wrap { overflow-x: auto; margin: 0.9rem 0; }
+    pre.chain {
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.9rem;
+      line-height: 1.55;
+      color: #ddd;
+      background: #0d0d0d;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 0.9rem 1.1rem;
+      margin: 0 auto;
+      width: max-content;
+      max-width: 100%;
+    }
   </style>
 </head>
 <body>
@@ -295,16 +369,69 @@
   </div>
 
   <div class="explain">
-    <p>The skeleton is an ordinary <em>ii–V–I</em>: <strong>Dm7</strong> …
-      <strong>G7</strong> → <strong>C</strong>. Coltrane fills the gap by
-      tonicising two more keys on the way home.</p>
-    <p>The three resting points —
-      <span class="tonic-name">A♭</span>,
-      <span class="tonic-name">E</span>,
-      <span class="tonic-name">C</span> — are each a major third apart. Those
-      leaps are the "giant steps." Every one is set up by its
-      <span class="dom-name">dominant 7th</span> (E♭7→A♭, B7→E, G7→C), so the
-      roots zig-zag <em>m2 · P4 · m3 · P4 · m3 · P4</em> as they descend.</p>
+    <p class="lede">Why does the second chord — <strong>E♭7</strong>, the
+      dominant of A♭ — follow the <strong>ii</strong> chord of C so smoothly?
+      Three things are happening at once.</p>
+
+    <h2><span class="num">1</span>It's almost a chromatic slide</h2>
+    <p>Line up the notes of the two chords and nearly every voice moves up by a
+      single half step — the whole chord planes upward:</p>
+    <div class="vl-wrap">
+      <table class="vl">
+        <thead>
+          <tr><th>Dm7</th><th></th><th>E♭7</th><th>motion</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="from">D <span class="deg">root</span></td><td>→</td><td class="to">E♭</td><td class="mv half">+1 semitone</td></tr>
+          <tr><td class="from">F <span class="deg">3rd</span></td><td>→</td><td class="to">G</td><td class="mv">+2 semitones</td></tr>
+          <tr><td class="from">A <span class="deg">5th</span></td><td>→</td><td class="to">B♭</td><td class="mv half">+1 semitone</td></tr>
+          <tr><td class="from">C <span class="deg">7th</span></td><td>→</td><td class="to">D♭</td><td class="mv half">+1 semitone</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="vl-note">three voices move a half step, one a whole step</p>
+    <p>In fact E♭7 <em>is</em> D7 shifted up a half step (D7 = D F♯ A C →
+      E♭7 = E♭ G B♭ D♭), and Dm7 differs from D7 only in its third. So the ear
+      hears a smooth chromatic shove upward with almost no friction — and smooth
+      voice leading is what lets a "foreign" chord sound connected.</p>
+
+    <h2><span class="num">2</span>A♭ is already in C's orbit</h2>
+    <p>You might ask why C would ever wander toward A♭. But
+      <span class="tonic-name">A♭ major is ♭VI of C</span> — the chord you get by
+      borrowing from C <em>minor</em> (modal mixture). ♭VI is one of the most
+      common colour-key destinations in all of tonal music (deceptive cadences,
+      Romantic harmony, film scores all lean on it). So tonicising A♭ isn't
+      leaving home; it's visiting a neighbour C already owns — and
+      <span class="dom-name">E♭7</span> is simply the V7 that delivers you there.</p>
+
+    <h2><span class="num">3</span>The ii chord is a springboard</h2>
+    <p>A <strong>ii7</strong> chord's job is to be pre-dominant tension — a
+      launching pad that wants to fire into <em>a</em> dominant. Normally that's
+      the home V (Dm7 → G7 → C), but a ii chord doesn't care <em>which</em>
+      dominant it feeds, as long as the resolution convinces. Coltrane keeps the
+      ordinary Dm7, then redirects the springboard toward
+      <span class="dom-name">E♭7</span> → <span class="tonic-name">A♭</span>,
+      delaying the arrival home. Dm7 becomes a <strong>pivot</strong>:
+      pre-dominant in C, and the setup tension for the E♭7→A♭ cadence.</p>
+
+    <h2>The big picture</h2>
+    <p>That first swerve is the first "giant step." The whole passage is built so
+      that <span class="tonic-name">C</span>,
+      <span class="tonic-name">A♭</span> and
+      <span class="tonic-name">E</span> divide the octave into three equal major
+      thirds, each key reached by its own dominant 7th:</p>
+    <div class="chain-wrap">
+<pre class="chain">Dm7  →  E♭7 → A♭  →  B7 → E  →  G7 → C
+ii7      V7    I      V7   I      V7   I
+of C    └─→ A♭       └─→ E       └─→ C  (home)</pre>
+    </div>
+    <p>Every dominant does the same trick — a smooth chromatic V pulling you a
+      major third down to the next tonic — until G7 finally lands you home.</p>
+
+    <p class="kicker"><strong>In one sentence:</strong> Dm7 is a pre-dominant
+      springboard, E♭7 is the V of C's close chromatic-mediant relative A♭ (♭VI),
+      and the two chords are joined by a near-parallel half-step slide — so it's
+      smooth on the surface <em>and</em> logical underneath.</p>
   </div>
 
   <script src="audio.js"></script>
