@@ -135,26 +135,33 @@ function stopChord() {
   if (activeBtn) { activeBtn.classList.remove('playing'); activeBtn = null; }
 }
 
-// Play the current chord. mode 'block' strikes all tones together; 'arp' rolls
-// them low-to-high and lets them ring as a chord, then releases.
-function play(mode, btn) {
+// Play an explicit list of MIDI notes. mode 'block' strikes them together;
+// 'arp' rolls them low-to-high (step ms apart) and lets them ring, then
+// releases. The keyboard highlights any note in its range (guitar bass notes
+// below C4 simply don't light a key, which is harmless).
+function playMidis(midis, mode, btn, step) {
   const wasActive = activeBtn === btn;
   stopChord();
   if (wasActive) return; // clicking the lit button again stops
-  const midis = buildVoicing(CIRCLE[rootIndex].root, QUALITIES[qualityIndex]).map(t => t.midi);
   activeBtn = btn;
   btn.classList.add('playing');
   if (mode === 'block') {
     midis.forEach(m => { synth.noteOn(m); highlightKey(m, true); });
     playTimers.push(setTimeout(stopChord, 1800));
   } else {
-    const step = 180; // ms between rolled notes
+    const s = step || 180; // ms between rolled notes
     midis.forEach((m, i) => playTimers.push(setTimeout(() => {
       synth.noteOn(m);
       highlightKey(m, true);
-    }, i * step)));
-    playTimers.push(setTimeout(stopChord, midis.length * step + 1400));
+    }, i * s)));
+    playTimers.push(setTimeout(stopChord, midis.length * s + 1400));
   }
+}
+
+// Play the current keyboard chord.
+function play(mode, btn) {
+  const midis = buildVoicing(CIRCLE[rootIndex].root, QUALITIES[qualityIndex]).map(t => t.midi);
+  playMidis(midis, mode, btn);
 }
 
 // --- mini keyboard ---------------------------------------------------------
@@ -192,6 +199,240 @@ function highlightKey(midi, on) {
 
 function clearHighlights() {
   document.querySelectorAll('.mini-key.on').forEach(el => el.classList.remove('on'));
+}
+
+// --- guitar voicings -------------------------------------------------------
+// Rather than ship a hand-typed chord dictionary, we search the fretboard for
+// the current chord. Standard tuning, open-string MIDI low→high (E2 A2 D3 G3
+// B3 E4). For each string a candidate is either muted or a fret whose pitch
+// class belongs to the chord; we keep the shapes that are actually playable
+// (root in the bass, a contiguous run of sounding strings, a ≤3-fret hand
+// span) and then present the best shape at each neck position.
+const GUITAR_STRINGS = [40, 45, 50, 55, 59, 64];
+const GUITAR_MAX_FRET = 12;
+const MAX_SPAN = 3;          // frets a hand can reach (a 4-fret window)
+const OPEN_WINDOW = 4;       // highest fret an open-position shape may reach
+
+// Build the set of shapes for a chord, described by its pitch classes.
+//   rootPc      – pitch class of the root (must be the lowest sounding note)
+//   allPcs      – every chord tone's pitch class (Set)
+//   essentialPc – tones that must be present; the perfect 5th is droppable
+function guitarVoicings(rootPc, allPcs, essentialPcs) {
+  const found = [];
+
+  // Candidate frets per string: mute (-1), or any fret that is a chord tone.
+  const candidates = GUITAR_STRINGS.map(open => {
+    const cands = [-1];
+    for (let f = 0; f <= GUITAR_MAX_FRET; f++) {
+      if (allPcs.has((open + f) % 12)) cands.push(f);
+    }
+    return cands;
+  });
+
+  const frets = new Array(6);
+  // Assign string by string, pruning on hand span as we go.
+  function recurse(s, minFret, maxFret) {
+    if (s === 6) { consider(frets.slice()); return; }
+    for (const f of candidates[s]) {
+      let nMin = minFret, nMax = maxFret;
+      if (f > 0) {
+        nMin = Math.min(minFret, f);
+        nMax = Math.max(maxFret, f);
+        if (nMax - nMin > MAX_SPAN) continue; // out of reach
+      }
+      frets[s] = f;
+      recurse(s + 1, nMin, nMax);
+    }
+  }
+
+  function consider(f) {
+    const sounding = [];
+    for (let i = 0; i < 6; i++) if (f[i] >= 0) sounding.push(i);
+    if (sounding.length < 4) return;                      // too thin
+    // Sounding strings must be one contiguous block (no awkward inner mutes).
+    for (let i = 1; i < sounding.length; i++) {
+      if (sounding[i] !== sounding[i - 1] + 1) return;
+    }
+    const bass = sounding[0];
+    if ((GUITAR_STRINGS[bass] + f[bass]) % 12 !== rootPc) return; // root in bass
+    const pcs = new Set(sounding.map(i => (GUITAR_STRINGS[i] + f[i]) % 12));
+    for (const pc of essentialPcs) if (!pcs.has(pc)) return;      // needs the colour tones
+
+    const fretted = sounding.map(i => f[i]).filter(v => v > 0);
+    const hasOpen = sounding.some(i => f[i] === 0);
+    const minFret = fretted.length ? Math.min(...fretted) : 1;
+    const maxFret = fretted.length ? Math.max(...fretted) : 0;
+    // An open-string shape reads from the nut (frets 1–5, nut drawn); a closed
+    // shape is movable and starts at its lowest fretted note. Open strings only
+    // belong to a nut shape — up the neck we want clean barre/movable forms, not
+    // odd open+high-fret hybrids.
+    let startFret;
+    if (hasOpen) {
+      if (maxFret > OPEN_WINDOW) return;
+      startFret = 1;
+    } else {
+      startFret = minFret <= 1 ? 1 : minFret;
+    }
+    const span = fretted.length ? maxFret - minFret : 0;
+
+    let score = sounding.length * 3 - startFret * 2 - span;
+    if (pcs.size === allPcs.size) score += 4;                     // complete voicing
+    if (hasOpen) score += 1;
+
+    found.push({ frets: f, startFret, hasOpen, score });
+  }
+
+  recurse(0, 99, 0);
+
+  // Keep the single best shape at each neck position, then present them
+  // low-to-high up the neck (open/first position first).
+  const bestAt = new Map();
+  for (const v of found) {
+    const cur = bestAt.get(v.startFret);
+    if (!cur || v.score > cur.score) bestAt.set(v.startFret, v);
+  }
+  return [...bestAt.values()]
+    .sort((a, b) => a.startFret - b.startFret)
+    .slice(0, 6);
+}
+
+// Derive the pitch-class description of the current chord for the search.
+function chordPcInfo(root, quality) {
+  const { pc: rootPc } = parseRoot(root);
+  const all = new Set(quality.intervals.map(iv => (rootPc + iv) % 12));
+  // The perfect 5th is the one tone guitarists routinely drop; everything else
+  // (root, 3rd/sus, 6th/7th/9th, and any altered 5th) is essential.
+  const essential = new Set(all);
+  if (quality.intervals.includes(7)) essential.delete((rootPc + 7) % 12);
+  return { rootPc, all, essential };
+}
+
+let guitarShapes = [];
+let voicingIndex = 0;
+
+// A short label for the neck position: "open" when open strings ring in first
+// position, otherwise the starting fret (e.g. "5fr").
+function voicingLabel(v) {
+  return v.startFret <= 1 && v.hasOpen ? 'open' : v.startFret + 'fr';
+}
+
+function el(tag, attrs, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+// Chord-box geometry.
+const FB = { padX: 18, padTop: 26, colW: 16, rowH: 20, frets: 5, strings: 6 };
+
+function renderFretboard(v) {
+  const svg = document.getElementById('fretboard');
+  svg.textContent = '';
+  const { padX, padTop, colW, rowH, frets } = FB;
+  const xs = i => padX + i * colW;
+  const ys = r => padTop + r * rowH;
+  const right = xs(5), bottom = ys(frets);
+
+  if (!v) {
+    svg.appendChild(el('text', {
+      x: (padX + right) / 2, y: padTop + 40, 'text-anchor': 'middle',
+      fill: 'rgba(255,255,255,0.5)', 'font-size': 11, 'font-style': 'italic',
+    }, 'no standard shape'));
+    return;
+  }
+
+  // Strings (vertical) and frets (horizontal).
+  for (let i = 0; i < 6; i++) {
+    svg.appendChild(el('line', { x1: xs(i), y1: padTop, x2: xs(i), y2: bottom, stroke: '#888', 'stroke-width': 1 }));
+  }
+  for (let r = 0; r <= frets; r++) {
+    const nut = r === 0 && v.startFret === 1;
+    svg.appendChild(el('line', {
+      x1: padX, y1: ys(r), x2: right, y2: ys(r),
+      stroke: nut ? '#e6e6e6' : '#888', 'stroke-width': nut ? 3.5 : 1,
+    }));
+  }
+
+  // Position label when the diagram starts partway up the neck.
+  if (v.startFret > 1) {
+    svg.appendChild(el('text', {
+      x: padX - 6, y: ys(0) + rowH * 0.5, 'text-anchor': 'end',
+      'dominant-baseline': 'central', fill: '#bbb', 'font-size': 11,
+    }, v.startFret + 'fr'));
+  }
+
+  // Markers per string: dot on the fret, or o / x above the nut.
+  for (let i = 0; i < 6; i++) {
+    const f = v.frets[i];
+    if (f > 0) {
+      const row = f - v.startFret;
+      svg.appendChild(el('circle', {
+        cx: xs(i), cy: padTop + (row + 0.5) * rowH, r: 5.2, fill: '#9cd8ff',
+      }));
+    } else if (f === 0) {
+      svg.appendChild(el('circle', {
+        cx: xs(i), cy: padTop - 10, r: 4, fill: 'none', stroke: '#cfcfcf', 'stroke-width': 1.3,
+      }));
+    } else {
+      svg.appendChild(el('text', {
+        x: xs(i), y: padTop - 6, 'text-anchor': 'middle', fill: '#7a7a7a', 'font-size': 12,
+      }, '×'));
+    }
+  }
+}
+
+// The fret tab (low→high), e.g. "x 3 2 0 1 0", read out under the diagram.
+function voicingCaption(v) {
+  if (!v) return ' ';
+  return v.frets.map(f => (f < 0 ? '×' : f)).join('  ');
+}
+
+function selectVoicing(i) {
+  voicingIndex = i;
+  document.querySelectorAll('.voicing-tab').forEach((t, j) =>
+    t.classList.toggle('active', j === i));
+  const v = guitarShapes[i];
+  renderFretboard(v);
+  document.getElementById('guitar-caption').textContent = voicingCaption(v);
+}
+
+function renderGuitar() {
+  const root = CIRCLE[rootIndex].root;
+  const quality = QUALITIES[qualityIndex];
+  const { rootPc, all, essential } = chordPcInfo(root, quality);
+  guitarShapes = guitarVoicings(rootPc, all, essential);
+  voicingIndex = 0;
+
+  const tabs = document.getElementById('voicing-tabs');
+  tabs.textContent = '';
+  if (!guitarShapes.length) {
+    renderFretboard(null);
+    document.getElementById('guitar-caption').textContent = ' ';
+    return;
+  }
+  guitarShapes.forEach((v, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'voicing-tab';
+    b.setAttribute('role', 'tab');
+    b.textContent = voicingLabel(v);
+    b.addEventListener('click', () => selectVoicing(i));
+    tabs.appendChild(b);
+  });
+  selectVoicing(0);
+}
+
+// Strum the selected guitar shape — its actual fretted pitches, rolled fast
+// low-to-high the way a downstroke sounds.
+function strum(btn) {
+  const v = guitarShapes[voicingIndex];
+  if (!v) return;
+  const midis = [];
+  for (let i = 0; i < 6; i++) {
+    if (v.frets[i] >= 0) midis.push(GUITAR_STRINGS[i] + v.frets[i]);
+  }
+  playMidis(midis, 'arp', btn, 45);
 }
 
 // --- UI --------------------------------------------------------------------
@@ -271,6 +512,7 @@ function renderFocus() {
   document.getElementById('chord-quality').textContent =
     quality.label + (firstInversion && quality.intervals.length > 1 ? ' (1st inversion)' : '');
   document.getElementById('chord-notes').textContent = voicing.map(t => t.name).join(' – ');
+  renderGuitar();
 }
 
 document.getElementById('tone').addEventListener('change', e => {
@@ -283,6 +525,7 @@ document.getElementById('invert').addEventListener('change', e => {
 });
 document.getElementById('play-block').addEventListener('click', e => play('block', e.currentTarget));
 document.getElementById('play-arp').addEventListener('click', e => play('arp', e.currentTarget));
+document.getElementById('strum').addEventListener('click', e => strum(e.currentTarget));
 
 buildCircle();
 buildQualityMenu();
