@@ -204,6 +204,63 @@
     }
     button:hover { border-color: #9cd8ff; color: #fff; }
     button.playing { border-color: #9cd8ff; color: #9cd8ff; background: rgba(156, 216, 255, 0.12); }
+
+    /* --- guitar voicings (chord on the fretboard) --- */
+    .guitar {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.85rem;
+      width: min(420px, 92vw);
+      margin-top: 0.6rem;
+      padding-top: 1.7rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .guitar-title {
+      font-size: 1.4rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-transform: lowercase;
+      color: rgba(255, 255, 255, 0.8);
+    }
+    .guitar-hint {
+      margin: -0.4rem 0 0;
+      font-size: 0.95rem;
+      font-style: italic;
+      color: rgba(255, 255, 255, 0.45);
+      text-align: center;
+    }
+    .voicing-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.45rem;
+    }
+    .voicing-tab {
+      border: 1px solid #666;
+      color: #bbb;
+      background: none;
+      font-family: inherit;
+      font-size: 0.9rem;
+      padding: 0.25em 0.7em;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s, background 0.15s;
+    }
+    .voicing-tab:hover { border-color: #9cd8ff; color: #fff; }
+    .voicing-tab.active {
+      border-color: #9cd8ff;
+      color: #06121c;
+      background: #9cd8ff;
+    }
+    .fretboard { width: 132px; height: auto; }
+    .guitar-caption {
+      font-size: 1.05rem;
+      letter-spacing: 0.22em;
+      color: #ddd;
+      font-variant-numeric: tabular-nums;
+      min-height: 1.2em;
+    }
   </style>
 </head>
 <body>
@@ -243,6 +300,15 @@
       <button id="play-block" type="button">play chord</button>
       <button id="play-arp" type="button">arpeggiate</button>
     </div>
+  </div>
+
+  <div class="guitar">
+    <div class="guitar-title">on the guitar</div>
+    <p class="guitar-hint">the same chord fretted in standard tuning — pick a position to see another shape</p>
+    <div class="voicing-tabs" id="voicing-tabs" role="tablist" aria-label="guitar voicings"></div>
+    <svg id="fretboard" class="fretboard" viewBox="0 0 116 142" aria-label="chord on the guitar"></svg>
+    <div class="guitar-caption" id="guitar-caption">&nbsp;</div>
+    <button id="strum" type="button">strum</button>
   </div>
 
   <script src="audio.js"></script>
