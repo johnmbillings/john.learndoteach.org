@@ -94,12 +94,14 @@ const AudioKit = (() => {
     seqTimers = [];
     if (seqCtx) {
       const now = seqCtx.currentTime;
-      activeVoices.forEach(({ osc, gain }) => {
+      activeVoices.forEach(({ osc, gain, extra }) => {
         try {
           gain.gain.cancelScheduledValues(now);
           gain.gain.setValueAtTime(Math.max(gain.gain.value, 0.0001), now);
           gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
           osc.stop(now + 0.06);
+          // Silence any companion oscillators (e.g. a vibrato LFO) too.
+          if (extra) extra.forEach(o => { try { o.stop(now + 0.06); } catch (e) {} });
         } catch (e) {}
       });
     }
@@ -119,13 +121,112 @@ const AudioKit = (() => {
     fB.type = 'peaking'; fB.frequency.value = 450; fB.Q.value = 3; fB.gain.value = 6;
     fC.type = 'peaking'; fC.frequency.value = 1800; fC.Q.value = 2; fC.gain.value = 5;
     lp.connect(fA); fA.connect(fB); fB.connect(fC);
-    return { input: lp, output: fC };
+    return { input: lp, output: fC, lp, baseCut: 5000 };
   }
+
+  // Expressiveness presets, indexed by level (0 = mechanical, 1 = natural,
+  // 2 = expressive). Every humanizing amount is 0 at level 0 so that level
+  // reproduces the plain re-articulated playback exactly.
+  //   glide     portamento time constant for note-to-note pitch (s)
+  //   vib       vibrato depth as a fraction of the sounding frequency
+  //   vibRate   vibrato speed (Hz)
+  //   dyn       loudness contour depth (higher notes a touch louder)
+  //   accent    extra loudness on the tonic (first note of the pass)
+  //   dynJitter random per-note loudness variation (± fraction)
+  //   timing    micro-timing onset jitter (± s)
+  //   bite      attack brightness sweep on the lowpass (fraction of cutoff)
+  //   artic     legato inter-note dip depth (how much the tone eases between
+  //             slurred notes so they're heard as separate, not one smear)
+  const EXPRESSION = [
+    { glide: 0,     vib: 0,     vibRate: 0,   dyn: 0,    accent: 0,    dynJitter: 0,    timing: 0,     bite: 0,    artic: 0    },
+    { glide: 0.020, vib: 0.003, vibRate: 5.2, dyn: 0.06, accent: 0.06, dynJitter: 0.03, timing: 0,     bite: 0.16, artic: 0.14 },
+    { glide: 0.030, vib: 0.006, vibRate: 5.5, dyn: 0.12, accent: 0.10, dynJitter: 0.05, timing: 0.008, bite: 0.28, artic: 0.20 },
+  ];
 
   // Current audio-clock time (creates the shared context if needed). Lets the
   // caller schedule contiguous loop passes against the same timeline.
   function currentTime() {
     return getSeqCtx().currentTime;
+  }
+
+  // A brief brightening of the lowpass on a note's attack — the "bite" of a
+  // bow catching the string. Dips the cutoff just under its resting value, opens
+  // past it during the attack, then settles back. `amount` is a fraction of the
+  // resting cutoff; 0 leaves the filter untouched.
+  function applyBite(voice, t, atk, amount) {
+    const f = voice.lp.frequency;
+    const base = voice.baseCut;
+    f.cancelScheduledValues(t);
+    f.setValueAtTime(base * (1 - amount * 0.5), t);
+    f.linearRampToValueAtTime(base * (1 + amount * 0.35), t + atk);
+    f.setTargetAtTime(base, t + atk, 0.08);
+  }
+
+  // Render a whole pass as ONE sustained voice whose pitch glides from note to
+  // note and whose amplitude stays up throughout — real legato, instead of a
+  // fresh note re-attacked from silence each time (the source of the mechanical
+  // "throb"). Distinct notes are still heard because the tone eases down a touch
+  // at each boundary (EX.artic) before swelling back, and the pitch slides in
+  // over a short portamento (EX.glide). A gentle vibrato fades in over the pass.
+  function renderConnected(ctx, baseMidi, seq, o) {
+    const { start, step, gate, atk, release, EX, dynFor, timeFor, scheduleOnNote } = o;
+    const n = seq.length;
+    const osc = ctx.createOscillator();
+    const voice = celloFilters(ctx);
+    const gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.connect(voice.input);
+    voice.output.connect(gain).connect(ctx.destination);
+
+    // Keep the glide and the articulation dip inside one note so fast tempos
+    // don't smear or overlap into the neighbour.
+    const glide = Math.min(EX.glide, step * 0.4);
+    const dipLead = Math.min(0.012, step * 0.15);
+    const dipTc = Math.min(0.006, step * 0.08);
+    const recTc = Math.min(0.03, step * 0.35);
+
+    // Pitch: start on the first note, glide to each subsequent one.
+    osc.frequency.setValueAtTime(midiToFreq(baseMidi + seq[0]), start);
+    // Amplitude: attack once, then hold.
+    const p0 = dynFor(seq[0], 0);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.linearRampToValueAtTime(p0, start + atk);
+    applyBite(voice, start, atk, EX.bite);
+    scheduleOnNote(seq[0], 0, start);
+
+    for (let i = 1; i < n; i++) {
+      const t = timeFor(i);
+      osc.frequency.setTargetAtTime(midiToFreq(baseMidi + seq[i]), Math.max(start, t - 0.004), glide);
+      const p = dynFor(seq[i], i);
+      const dip = Math.max(p * (1 - EX.artic), 0.0002);
+      gain.gain.setTargetAtTime(dip, Math.max(start + atk, t - dipLead), dipTc); // ease down into the new note
+      gain.gain.setTargetAtTime(p, t + 0.004, recTc);                            // swell back up on it
+      scheduleOnNote(seq[i], i, start + i * step);
+    }
+
+    // Vibrato: an LFO on the pitch whose depth fades in across the pass, so
+    // sustained notes shimmer rather than sit dead-still.
+    let lfo = null;
+    if (EX.vib > 0) {
+      lfo = ctx.createOscillator();
+      const lfoGain = ctx.createGain();
+      const midHz = midiToFreq(baseMidi + seq[Math.floor(n / 2)]);
+      lfo.frequency.value = EX.vibRate;
+      lfoGain.gain.setValueAtTime(0.0001, start);
+      lfoGain.gain.linearRampToValueAtTime(midHz * EX.vib, start + Math.min(0.6, n * step * 0.5));
+      lfo.connect(lfoGain).connect(osc.frequency);
+      lfo.start(start);
+    }
+
+    const end = start + n * step;
+    gain.gain.setTargetAtTime(0.0001, end - release, release / 2);
+    const stopAt = end + release * 3 + 0.05;
+    osc.start(start);
+    osc.stop(stopAt);
+    if (lfo) lfo.stop(stopAt);
+    const rec = { osc, gain, extra: lfo ? [lfo] : [] };
+    activeVoices.push(rec);
+    osc.onended = () => { const k = activeVoices.indexOf(rec); if (k >= 0) activeVoices.splice(k, 1); };
   }
 
   // Plays a sequence of semitone offsets from baseMidi using the cello voice.
@@ -137,8 +238,12 @@ const AudioKit = (() => {
   // keep the previous sequence's voices instead of stopping them, for gapless
   // looping), clickInterval (beat length in s; >0 adds a metronome tick on each
   // beat across this pass, locked to the note grid), clickAccent (accent the
-  // pass's first tick — the downbeat where the tonic sounds). Returns the
-  // audio-clock time the next contiguous note would start
+  // pass's first tick — the downbeat where the tonic sounds),
+  // expressiveness (0 = mechanical/plain re-articulation, 1 = natural, 2 =
+  // expressive — adds portamento, vibrato, loudness contour, attack bite and
+  // micro-timing), legato (true = this articulation fully connects, so at
+  // expressiveness >= 1 the pass is rendered as one continuous glided voice).
+  // Returns the audio-clock time the next contiguous note would start
   // (= start + seq.length * step), so a loop can schedule the next pass exactly.
   function playSequence(baseMidi, seq, opts = {}) {
     const ctx = getSeqCtx();
@@ -152,43 +257,81 @@ const AudioKit = (() => {
     const sustain = opts.sustain != null ? opts.sustain : 0;
     const release = opts.release != null ? opts.release : 0.05;
     const onNote = typeof opts.onNote === 'function' ? opts.onNote : null;
+    const expr = Math.max(0, Math.min(2, opts.expressiveness | 0));
+    const EX = EXPRESSION[expr];
+    // "Connected" playback (legato) at expressiveness >= 1 is rendered as one
+    // continuous glided voice; everything else is note-by-note.
+    const connected = !!opts.legato && expr >= 1;
     // Never layer a second scale over the first, unless chaining a loop pass.
     if (!opts.chain) stopSequence();
     const now = ctx.currentTime;
     const start = opts.when != null ? Math.max(opts.when, now) : now + 0.05;
-    seq.forEach((semi, i) => {
-      const t = start + i * step;
-      const osc = ctx.createOscillator();
-      const voice = celloFilters(ctx);
-      const gain = ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.value = midiToFreq(baseMidi + semi);
-      const atk = Math.min(attack, gate * 0.5);
-      gain.gain.setValueAtTime(0.0001, t);
-      gain.gain.linearRampToValueAtTime(peak, t + atk);
-      if (sustain > 0) {
-        // attack → quick decay to the sustain plateau → hold → release
-        const susLevel = Math.max(peak * sustain, 0.0002);
-        const decayEnd = t + Math.min(atk + 0.04, gate * 0.6);
-        gain.gain.linearRampToValueAtTime(susLevel, decayEnd);
-        gain.gain.setValueAtTime(susLevel, Math.max(decayEnd, t + gate - release));
-      }
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + gate);
-      osc.connect(voice.input);
-      voice.output.connect(gain).connect(ctx.destination);
-      osc.start(t);
-      osc.stop(t + gate + 0.05);
-      const rec = { osc, gain };
-      activeVoices.push(rec);
-      osc.onended = () => { const k = activeVoices.indexOf(rec); if (k >= 0) activeVoices.splice(k, 1); };
-      if (onNote) {
-        const id = setTimeout(() => {
-          const k = seqTimers.indexOf(id); if (k >= 0) seqTimers.splice(k, 1);
-          onNote(semi, i);
-        }, Math.max(0, (t - now) * 1000));
-        seqTimers.push(id);
-      }
-    });
+    const atk = Math.min(attack, gate * 0.5);
+
+    // Loudness contour: at level 0 every note is `peak`; above that, higher
+    // notes sound a touch louder, the tonic is emphasized, and each note gets a
+    // small random nudge so the line breathes instead of marching.
+    const lo = Math.min(...seq), hi = Math.max(...seq);
+    const spanSemis = Math.max(1, hi - lo);
+    function dynFor(semi, i) {
+      if (expr === 0) return peak;
+      const contour = EX.dyn * (((semi - lo) / spanSemis) - 0.5) * 2;
+      const accent = i === 0 ? EX.accent : 0;
+      const jitter = EX.dynJitter ? (Math.random() * 2 - 1) * EX.dynJitter : 0;
+      return Math.max(peak * (1 + contour + accent + jitter), 0.0002);
+    }
+    // Micro-timing: nudge onsets off the grid at level 2, but never the first
+    // note of a pass, so loop seams stay locked and the tonic lands on the beat.
+    function timeFor(i) {
+      const base = start + i * step;
+      if (EX.timing === 0 || i === 0) return base;
+      return base + (Math.random() * 2 - 1) * EX.timing;
+    }
+    function scheduleOnNote(semi, i, t) {
+      if (!onNote) return;
+      const id = setTimeout(() => {
+        const k = seqTimers.indexOf(id); if (k >= 0) seqTimers.splice(k, 1);
+        onNote(semi, i);
+      }, Math.max(0, (t - now) * 1000));
+      seqTimers.push(id);
+    }
+
+    if (connected) {
+      renderConnected(ctx, baseMidi, seq, {
+        start, step, gate, atk, release, peak, EX, dynFor, timeFor, scheduleOnNote,
+      });
+    } else {
+      seq.forEach((semi, i) => {
+        const t = timeFor(i);
+        const p = dynFor(semi, i);
+        const osc = ctx.createOscillator();
+        const voice = celloFilters(ctx);
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.value = midiToFreq(baseMidi + semi);
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.linearRampToValueAtTime(p, t + atk);
+        if (sustain > 0) {
+          // attack → quick decay to the sustain plateau → hold → release
+          const susLevel = Math.max(p * sustain, 0.0002);
+          const decayEnd = t + Math.min(atk + 0.04, gate * 0.6);
+          gain.gain.linearRampToValueAtTime(susLevel, decayEnd);
+          gain.gain.setValueAtTime(susLevel, Math.max(decayEnd, t + gate - release));
+        }
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + gate);
+        // Bow "bite": a brief brightening on the attack, tied to the note's
+        // dynamic. Silent at level 0 (bite = 0) so timbre is unchanged there.
+        if (EX.bite > 0) applyBite(voice, t, atk, EX.bite);
+        osc.connect(voice.input);
+        voice.output.connect(gain).connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + gate + 0.05);
+        const rec = { osc, gain };
+        activeVoices.push(rec);
+        osc.onended = () => { const k = activeVoices.indexOf(rec); if (k >= 0) activeVoices.splice(k, 1); };
+        scheduleOnNote(semi, i, t);
+      });
+    }
     // Metronome ticks, locked to the same start as the notes. Beats are a coarser
     // grid than the note subdivision, so a tick can fall between notes (e.g. four
     // ticks under a whole note). Round the pass to a whole number of beats so the

@@ -150,6 +150,8 @@ let autoDescend = false;
 let tempoBpm = 112;
 let metronomeOn = false; // audible click on each beat while a scale plays
 let articulation = 'legato';
+let expressiveness = 1; // 0 mechanical, 1 natural, 2 expressive (humanized playback)
+const EXPRESSIVENESS_LABELS = ['mechanical', 'natural', 'expressive'];
 let loopOn = false;
 let repeatEnds = false; // when looping, repeat the turnaround (top/bottom) notes
 let playingButton = null; // the play button whose scale is currently sounding
@@ -267,6 +269,8 @@ function schedulePass(baseMidi, makeSeq, rowReadout, namer, when, chain, rowStaf
     release: art.release,
     when,
     chain,
+    expressiveness,
+    legato: articulation === 'legato', // fully-connected articulation → glided legato voice
     clickInterval: metronomeOn ? 60 / tempoBpm : 0,
     clickAccent: true, // accent each pass's first beat (the tonic downbeat)
     onNote: (semi) => {
@@ -701,7 +705,21 @@ function initScaleOptions() {
 
   const artic = document.getElementById('articulation');
   articulation = artic.value;
-  artic.addEventListener('change', () => { articulation = artic.value; });
+  artic.addEventListener('change', () => {
+    articulation = artic.value;
+    restartIfLooping(); // legato ↔ detached changes the voice; apply it now
+  });
+
+  const expr = document.getElementById('expressiveness');
+  const exprVal = document.getElementById('expressiveness-val');
+  const showExpr = () => { exprVal.textContent = EXPRESSIVENESS_LABELS[expressiveness]; };
+  expressiveness = parseInt(expr.value, 10);
+  showExpr();
+  expr.addEventListener('input', () => {
+    expressiveness = parseInt(expr.value, 10);
+    showExpr();
+    restartIfLooping(); // re-voice a running loop at the new level immediately
+  });
 }
 
 function initViewToggles() {
@@ -748,6 +766,7 @@ const PREFS = [
   { id: 'repeat-ends',   key: 'repeatEnds',  kind: 'bool',   ev: 'change' },
   { id: 'auto-descend',  key: 'autoDescend', kind: 'bool',   ev: 'change' },
   { id: 'articulation',  key: 'articulation',kind: 'option', ev: 'change' },
+  { id: 'expressiveness', key: 'expressiveness', kind: 'num', min: 0, max: 2, ev: 'input' },
   { id: 'toggle-sig',    key: 'sig',         kind: 'bool',   ev: 'change' },
   { id: 'toggle-keysig', key: 'keysig',      kind: 'bool',   ev: 'change' },
   { id: 'toggle-treble', key: 'treble',      kind: 'bool',   ev: 'change' },
