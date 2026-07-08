@@ -182,7 +182,11 @@
     .ctl input[type="range"] { width: 6em; }
     .ctl-val { min-width: 1ch; color: #9cd8ff; }
     .subdiv-val { min-width: 5.5em; color: #9cd8ff; }
-    .note-eq { font-size: 1.25rem; color: rgba(255, 255, 255, 0.8); }
+    /* Note-value glyphs are SMuFL (Bravura) so whole/half render everywhere;
+       line-height:0 keeps the tall stem from stretching the control row. */
+    .note-glyph { font-family: 'Bravura'; font-size: 1.4em; line-height: 0; vertical-align: -0.05em; }
+    .subdiv-val sup { font-size: 0.7em; }
+    .note-eq { color: rgba(255, 255, 255, 0.8); }
     .ctl .unit { opacity: 0.55; }
     .ctl input[type="number"],
     .ctl select {
@@ -354,7 +358,7 @@
       <span id="octaves-val" class="ctl-val">1</span>
     </label>
     <label class="ctl">
-      <span class="note-eq">&#x2669; =</span>
+      <span class="note-eq"><span class="note-glyph">&#xE1D5;</span> =</span>
       <input id="tempo" type="number" min="40" max="300" step="1" value="112">
     </label>
     <label class="switch">
@@ -365,7 +369,7 @@
     <label class="ctl">
       note
       <input id="subdiv" type="range" min="0" max="5" step="1" value="2">
-      <span id="subdiv-val" class="subdiv-val">&#x2669; quarter</span>
+      <span id="subdiv-val" class="subdiv-val"><span class="note-glyph">&#xE1D5;</span> quarter</span>
     </label>
     <label class="switch">
       <input id="loop" type="checkbox">
