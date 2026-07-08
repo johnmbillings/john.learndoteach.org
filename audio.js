@@ -137,10 +137,14 @@ const AudioKit = (() => {
   //   bite      attack brightness sweep on the lowpass (fraction of cutoff)
   //   artic     legato inter-note dip depth (how much the tone eases between
   //             slurred notes so they're heard as separate, not one smear)
+  // Expressive (level 2) is a *tasteful* step above natural — a touch more
+  // singing vibrato, dynamic shaping and bite — but deliberately keeps steady
+  // time (timing: 0) and only a hair more portamento, so an even scale doesn't
+  // wobble or sound seasick.
   const EXPRESSION = [
-    { glide: 0,     vib: 0,     vibRate: 0,   dyn: 0,    accent: 0,    dynJitter: 0,    timing: 0,     bite: 0,    artic: 0    },
-    { glide: 0.020, vib: 0.003, vibRate: 5.2, dyn: 0.06, accent: 0.06, dynJitter: 0.03, timing: 0,     bite: 0.16, artic: 0.14 },
-    { glide: 0.030, vib: 0.006, vibRate: 5.5, dyn: 0.12, accent: 0.10, dynJitter: 0.05, timing: 0.008, bite: 0.28, artic: 0.20 },
+    { glide: 0,     vib: 0,      vibRate: 0,   dyn: 0,    accent: 0,    dynJitter: 0,    timing: 0, bite: 0,    artic: 0    },
+    { glide: 0.020, vib: 0.003,  vibRate: 5.2, dyn: 0.06, accent: 0.06, dynJitter: 0.03, timing: 0, bite: 0.16, artic: 0.14 },
+    { glide: 0.024, vib: 0.0052, vibRate: 5.6, dyn: 0.10, accent: 0.09, dynJitter: 0.03, timing: 0, bite: 0.22, artic: 0.16 },
   ];
 
   // Current audio-clock time (creates the shared context if needed). Lets the
@@ -187,11 +191,15 @@ const AudioKit = (() => {
 
     // Pitch: start on the first note, glide to each subsequent one.
     osc.frequency.setValueAtTime(midiToFreq(baseMidi + seq[0]), start);
-    // Amplitude: attack once, then hold.
+    // Amplitude: soften the very first onset — a slow, rounded rise (the bow
+    // catching the string), gentler than the quick linear attack of the notes
+    // that swell out of the preceding one. setTargetAtTime gives a curved
+    // approach with no hard corner at the top.
     const p0 = dynFor(seq[0], 0);
+    const firstAtk = Math.min(Math.max(atk * 3, 0.05), gate * 0.7);
     gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.linearRampToValueAtTime(p0, start + atk);
-    applyBite(voice, start, atk, EX.bite);
+    gain.gain.setTargetAtTime(p0, start, firstAtk / 3);
+    applyBite(voice, start, firstAtk, EX.bite); // open the tone in over the same soft attack
     scheduleOnNote(seq[0], 0, start);
 
     for (let i = 1; i < n; i++) {
