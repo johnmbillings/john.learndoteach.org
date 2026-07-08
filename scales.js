@@ -141,14 +141,14 @@ const GROUP_LABEL = { mode: 'modes', other: 'other scales' };
 
 let selectedIndex = 0; // default C
 let showExtra = false; // "show additional scales"
-let octaves = 1;
+let octaves = 3;
 
 const { pitchToMidi } = AudioKit;
 const cello = AudioKit.instruments.cello; // the natural, always-legato melodic voice
 
 // --- scale playback ---
 let autoDescend = false;
-let tempoBpm = 112;
+let tempoBpm = 60;
 let metronomeOn = false; // audible click on each beat while a scale plays
 let loopOn = false;
 let repeatEnds = false; // when looping, repeat the turnaround (top/bottom) notes
