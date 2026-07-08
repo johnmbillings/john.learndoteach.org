@@ -147,9 +147,10 @@ const AudioKit = (() => {
   //             slurred notes so they're heard as separate, not one smear)
   const CELLO_TIMBRE = { wave: 'sawtooth', makeFilters: celloFilters };
   // The "natural" cello: connected, singing legato with gentle humanizing —
-  // steady time, a hair of portamento, fade-in vibrato and dynamic shaping.
+  // steady time, a hair of portamento, and dynamic shaping. No vibrato
+  // (vib: 0 skips the LFO); vibRate stays for any future instrument that wants it.
   const CELLO_EXPRESSION = {
-    glide: 0.020, vib: 0.003, vibRate: 5.2,
+    glide: 0.020, vib: 0, vibRate: 5.2,
     dyn: 0.06, accent: 0.06, dynJitter: 0.03,
     timing: 0, bite: 0.16, artic: 0.14,
   };
