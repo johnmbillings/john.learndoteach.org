@@ -144,14 +144,12 @@ let showExtra = false; // "show additional scales"
 let octaves = 1;
 
 const { pitchToMidi } = AudioKit;
+const cello = AudioKit.instruments.cello; // the natural, always-legato melodic voice
 
 // --- scale playback ---
 let autoDescend = false;
 let tempoBpm = 112;
 let metronomeOn = false; // audible click on each beat while a scale plays
-let articulation = 'legato';
-let expressiveness = 1; // 0 mechanical, 1 natural, 2 expressive (humanized playback)
-const EXPRESSIVENESS_LABELS = ['mechanical', 'natural', 'expressive'];
 let loopOn = false;
 let repeatEnds = false; // when looping, repeat the turnaround (top/bottom) notes
 let playingButton = null; // the play button whose scale is currently sounding
@@ -169,14 +167,10 @@ const SUBDIVS = [
   { label: '♬',  name: 'sixteenth', perBeat: 4 },
 ];
 
-// gate = fraction of the beat the note sounds; sustain = held level; atk/release
-// = envelope edges. A smooth continuum: staccato is gently detached (not clipped),
-// portato sits midway, legato fully connects.
-const ARTIC = {
-  staccato: { gate: 0.60, atk: 0.008, sustain: 0.50, release: 0.05 },
-  portato:  { gate: 0.80, atk: 0.015, sustain: 0.70, release: 0.06 },
-  legato:   { gate: 1.0,  atk: 0.025, sustain: 0.90, release: 0.06 },
-};
+// Every scale is played legato: notes fully connect and the natural cello
+// renders them as one continuous glided voice. gate = fraction of the beat the
+// note sounds; sustain = held level; atk/release = envelope edges.
+const LEGATO = { gate: 1.0, atk: 0.025, sustain: 0.90, release: 0.06 };
 
 // Expand a one-octave interval set (ending on 12) across `octaves` octaves,
 // e.g. major over 2 octaves -> 0,2,4,5,7,9,11,12,14,16,17,19,21,23,24.
@@ -254,23 +248,21 @@ function restartIfLooping() {
 function schedulePass(baseMidi, makeSeq, rowReadout, namer, when, chain, rowStaff) {
   const seq = makeSeq();
   const step = (60 / tempoBpm) / SUBDIVS[subdivIndex].perBeat;
-  const art = ARTIC[articulation] || ARTIC.legato;
   const center = document.getElementById('playing-note');
   const trebleEl = document.getElementById('toggle-treble');
   // When looping without repeating the turnaround, drop a trailing note that
   // duplicates the first (e.g. up-then-down) so the bottom isn't struck twice.
   const noRepeat = loopOn && !repeatEnds && seq.length > 1 && seq[0] === seq[seq.length - 1];
   const toPlay = noRepeat ? seq.slice(0, -1) : seq;
-  const nextStart = AudioKit.playSequence(baseMidi, toPlay, {
+  const nextStart = cello.playSequence(baseMidi, toPlay, {
     step,
-    gate: step * art.gate,
-    attack: art.atk,
-    sustain: art.sustain,
-    release: art.release,
+    gate: step * LEGATO.gate,
+    attack: LEGATO.atk,
+    sustain: LEGATO.sustain,
+    release: LEGATO.release,
     when,
     chain,
-    expressiveness,
-    legato: articulation === 'legato', // fully-connected articulation → glided legato voice
+    legato: true, // always fully connected → the cello's glided legato voice
     clickInterval: metronomeOn ? 60 / tempoBpm : 0,
     clickAccent: true, // accent each pass's first beat (the tonic downbeat)
     onNote: (semi) => {
@@ -702,24 +694,6 @@ function initScaleOptions() {
     repeatEnds = repeat.checked;
     restartIfLooping(); // apply immediately to a running loop
   });
-
-  const artic = document.getElementById('articulation');
-  articulation = artic.value;
-  artic.addEventListener('change', () => {
-    articulation = artic.value;
-    restartIfLooping(); // legato ↔ detached changes the voice; apply it now
-  });
-
-  const expr = document.getElementById('expressiveness');
-  const exprVal = document.getElementById('expressiveness-val');
-  const showExpr = () => { exprVal.textContent = EXPRESSIVENESS_LABELS[expressiveness]; };
-  expressiveness = parseInt(expr.value, 10);
-  showExpr();
-  expr.addEventListener('input', () => {
-    expressiveness = parseInt(expr.value, 10);
-    showExpr();
-    restartIfLooping(); // re-voice a running loop at the new level immediately
-  });
 }
 
 function initViewToggles() {
@@ -765,8 +739,6 @@ const PREFS = [
   { id: 'loop',          key: 'loop',        kind: 'bool',   ev: 'change' },
   { id: 'repeat-ends',   key: 'repeatEnds',  kind: 'bool',   ev: 'change' },
   { id: 'auto-descend',  key: 'autoDescend', kind: 'bool',   ev: 'change' },
-  { id: 'articulation',  key: 'articulation',kind: 'option', ev: 'change' },
-  { id: 'expressiveness', key: 'expressiveness', kind: 'num', min: 0, max: 2, ev: 'input' },
   { id: 'toggle-sig',    key: 'sig',         kind: 'bool',   ev: 'change' },
   { id: 'toggle-keysig', key: 'keysig',      kind: 'bool',   ev: 'change' },
   { id: 'toggle-treble', key: 'treble',      kind: 'bool',   ev: 'change' },
