@@ -157,14 +157,18 @@ let currentPlay = null; // { baseMidi, makeSeq, rowReadout } for re-triggering a
 let loopTimerId = null; // pending timer that schedules the next loop pass
 
 // Note value per beat: how many scale notes fit in one quarter-note beat.
+// `glyph` is a SMuFL (Bravura) codepoint, not a Unicode "Musical Symbols" char:
+// the whole/half-note codepoints (U+1D15D/1D15E) are absent from most device
+// fonts and rendered as "no glyph" tofu, while quarter/eighth (U+2669/266A) did
+// not. Bravura is self-hosted, so every note value now renders identically.
 let subdivIndex = 0;
 const SUBDIVS = [
-  { label: '𝅝',  name: 'whole',     perBeat: 0.25 },
-  { label: '𝅗𝅥',  name: 'half',      perBeat: 0.5  },
-  { label: '♩',  name: 'quarter',   perBeat: 1 },
-  { label: '♪',  name: 'eighth',    perBeat: 2 },
-  { label: '♪³', name: 'triplet',   perBeat: 3 },
-  { label: '♬',  name: 'sixteenth', perBeat: 4 },
+  { glyph: '', name: 'whole',     perBeat: 0.25 },          // noteWhole
+  { glyph: '', name: 'half',      perBeat: 0.5  },          // noteHalfUp
+  { glyph: '', name: 'quarter',   perBeat: 1    },          // noteQuarterUp
+  { glyph: '', name: 'eighth',    perBeat: 2    },          // note8thUp
+  { glyph: '', name: 'triplet',   perBeat: 3, sup: '3' },   // note8thUp + "3"
+  { glyph: '', name: 'sixteenth', perBeat: 4    },          // note16thUp
 ];
 
 // Every scale is played legato: notes fully connect and the natural cello
@@ -675,7 +679,11 @@ function initScaleOptions() {
   const subdivVal = document.getElementById('subdiv-val');
   const showSubdiv = () => {
     const s = SUBDIVS[subdivIndex];
-    subdivVal.textContent = `${s.label} ${s.name}`;
+    // The note glyph is a Bravura codepoint, so it needs the music font (via
+    // the .note-glyph class); the name stays in the page font. Content is from
+    // the constant SUBDIVS table, so innerHTML carries no untrusted input.
+    subdivVal.innerHTML =
+      `<span class="note-glyph">${s.glyph}</span>${s.sup ? `<sup>${s.sup}</sup>` : ''} ${s.name}`;
   };
   subdivIndex = parseInt(subdiv.value, 10);
   showSubdiv();
