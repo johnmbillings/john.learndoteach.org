@@ -4,7 +4,9 @@
 // Exposes:
 //   AudioKit.midiToFreq(midi)
 //   AudioKit.pitchToMidi(name, defaultOctave = 3)
-//   AudioKit.playSequence(baseMidi, semitoneOffsets, opts)
+//   AudioKit.createInstrument({ name, timbre, expression }) -> { playSequence, ... }
+//   AudioKit.instruments.cello  -> the natural cello (default melodic voice)
+//   AudioKit.playSequence(baseMidi, semitoneOffsets, opts)  (legacy plain voice)
 //   AudioKit.createDrone()  -> { start, stop, retune, setRoot, setFifth, setVolume, playing }
 const AudioKit = (() => {
   const FIFTH_RATIO = 1.5;
@@ -124,9 +126,15 @@ const AudioKit = (() => {
     return { input: lp, output: fC, lp, baseCut: 5000 };
   }
 
-  // Expressiveness presets, indexed by level (0 = mechanical, 1 = natural,
-  // 2 = expressive). Every humanizing amount is 0 at level 0 so that level
-  // reproduces the plain re-articulated playback exactly.
+  // --- instrument model -----------------------------------------------------
+  // An instrument bundles a *timbre* (how one sustained voice sounds) with an
+  // optional *expression* profile (how a melodic line is phrased) and knows how
+  // to play a sequence of notes with that voice. The cello below is the first
+  // instrument; the poly synth's piano/cello timbres can be described as
+  // profiles here in a later pass so every voice shares one definition.
+  //
+  // A timbre: { wave, makeFilters(ctx) -> { input, output, lp?, baseCut? } }.
+  // An expression profile (null = plain, un-phrased re-articulation):
   //   glide     portamento time constant for note-to-note pitch (s)
   //   vib       vibrato depth as a fraction of the sounding frequency
   //   vibRate   vibrato speed (Hz)
@@ -137,15 +145,14 @@ const AudioKit = (() => {
   //   bite      attack brightness sweep on the lowpass (fraction of cutoff)
   //   artic     legato inter-note dip depth (how much the tone eases between
   //             slurred notes so they're heard as separate, not one smear)
-  // Expressive (level 2) is a *tasteful* step above natural — a touch more
-  // singing vibrato, dynamic shaping and bite — but deliberately keeps steady
-  // time (timing: 0) and only a hair more portamento, so an even scale doesn't
-  // wobble or sound seasick.
-  const EXPRESSION = [
-    { glide: 0,     vib: 0,      vibRate: 0,   dyn: 0,    accent: 0,    dynJitter: 0,    timing: 0, bite: 0,    artic: 0    },
-    { glide: 0.020, vib: 0.003,  vibRate: 5.2, dyn: 0.06, accent: 0.06, dynJitter: 0.03, timing: 0, bite: 0.16, artic: 0.14 },
-    { glide: 0.024, vib: 0.0052, vibRate: 5.6, dyn: 0.10, accent: 0.09, dynJitter: 0.03, timing: 0, bite: 0.22, artic: 0.16 },
-  ];
+  const CELLO_TIMBRE = { wave: 'sawtooth', makeFilters: celloFilters };
+  // The "natural" cello: connected, singing legato with gentle humanizing —
+  // steady time, a hair of portamento, fade-in vibrato and dynamic shaping.
+  const CELLO_EXPRESSION = {
+    glide: 0.020, vib: 0.003, vibRate: 5.2,
+    dyn: 0.06, accent: 0.06, dynJitter: 0.03,
+    timing: 0, bite: 0.16, artic: 0.14,
+  };
 
   // Current audio-clock time (creates the shared context if needed). Lets the
   // caller schedule contiguous loop passes against the same timeline.
@@ -172,13 +179,13 @@ const AudioKit = (() => {
   // "throb"). Distinct notes are still heard because the tone eases down a touch
   // at each boundary (EX.artic) before swelling back, and the pitch slides in
   // over a short portamento (EX.glide). A gentle vibrato fades in over the pass.
-  function renderConnected(ctx, baseMidi, seq, o) {
+  function renderConnected(ctx, timbre, baseMidi, seq, o) {
     const { start, step, gate, atk, release, EX, dynFor, timeFor, scheduleOnNote } = o;
     const n = seq.length;
     const osc = ctx.createOscillator();
-    const voice = celloFilters(ctx);
+    const voice = timbre.makeFilters(ctx);
     const gain = ctx.createGain();
-    osc.type = 'sawtooth';
+    osc.type = timbre.wave;
     osc.connect(voice.input);
     voice.output.connect(gain).connect(ctx.destination);
 
@@ -199,7 +206,7 @@ const AudioKit = (() => {
     const firstAtk = Math.min(Math.max(atk * 3, 0.05), gate * 0.7);
     gain.gain.setValueAtTime(0.0001, start);
     gain.gain.setTargetAtTime(p0, start, firstAtk / 3);
-    applyBite(voice, start, firstAtk, EX.bite); // open the tone in over the same soft attack
+    if (EX.bite > 0 && voice.lp) applyBite(voice, start, firstAtk, EX.bite); // open the tone in over the same soft attack
     scheduleOnNote(seq[0], 0, start);
 
     for (let i = 1; i < n; i++) {
@@ -237,27 +244,27 @@ const AudioKit = (() => {
     osc.onended = () => { const k = activeVoices.indexOf(rec); if (k >= 0) activeVoices.splice(k, 1); };
   }
 
-  // Plays a sequence of semitone offsets from baseMidi using the cello voice.
+  // Play a sequence of semitone offsets from baseMidi with `instr`'s voice.
   // opts: step (onset spacing, s), gate (sounding length, s), attack (s),
   // peak (gain), sustain (0 = plucked decay over the whole gate; >0 = hold at
-  // that fraction of peak until a short release — needed for legato/portato),
-  // release (release length, s), onNote(semi, i) fired as each note sounds,
-  // when (absolute audio-clock start time; default = now + 0.05), chain (true =
-  // keep the previous sequence's voices instead of stopping them, for gapless
+  // that fraction of peak until a short release — for portato/legato), release
+  // (release length, s), onNote(semi, i) fired as each note sounds, when
+  // (absolute audio-clock start time; default = now + 0.05), chain (true = keep
+  // the previous sequence's voices instead of stopping them, for gapless
   // looping), clickInterval (beat length in s; >0 adds a metronome tick on each
   // beat across this pass, locked to the note grid), clickAccent (accent the
-  // pass's first tick — the downbeat where the tonic sounds),
-  // expressiveness (0 = mechanical/plain re-articulation, 1 = natural, 2 =
-  // expressive — adds portamento, vibrato, loudness contour, attack bite and
-  // micro-timing), legato (true = this articulation fully connects, so at
-  // expressiveness >= 1 the pass is rendered as one continuous glided voice).
-  // Returns the audio-clock time the next contiguous note would start
-  // (= start + seq.length * step), so a loop can schedule the next pass exactly.
-  function playSequence(baseMidi, seq, opts = {}) {
+  // pass's first tick — the downbeat where the tonic sounds), legato (true = the
+  // articulation fully connects, so an expressive instrument renders the pass as
+  // one continuous glided voice instead of note-by-note). Returns the audio-clock
+  // time the next contiguous note would start (= start + seq.length * step), so a
+  // loop can schedule the next pass exactly.
+  function renderSequence(instr, baseMidi, seq, opts = {}) {
     const ctx = getSeqCtx();
     // Resume on any non-running state (covers iOS 'interrupted' after a lock),
     // running inside this user-gesture call so iOS allows it.
     if (ctx.state !== 'running') { try { ctx.resume(); } catch (e) {} }
+    const timbre = instr.timbre;
+    const EX = instr.expression; // null = plain, un-phrased playback
     const step = opts.step != null ? opts.step : 0.42;
     const gate = Math.max(opts.gate != null ? opts.gate : step * 0.92, 0.04);
     const attack = opts.attack != null ? opts.attack : 0.02;
@@ -265,34 +272,32 @@ const AudioKit = (() => {
     const sustain = opts.sustain != null ? opts.sustain : 0;
     const release = opts.release != null ? opts.release : 0.05;
     const onNote = typeof opts.onNote === 'function' ? opts.onNote : null;
-    const expr = Math.max(0, Math.min(2, opts.expressiveness | 0));
-    const EX = EXPRESSION[expr];
-    // "Connected" playback (legato) at expressiveness >= 1 is rendered as one
+    // A fully-connected articulation on an expressive instrument becomes one
     // continuous glided voice; everything else is note-by-note.
-    const connected = !!opts.legato && expr >= 1;
-    // Never layer a second scale over the first, unless chaining a loop pass.
+    const connected = !!opts.legato && !!EX;
+    // Never layer a second sequence over the first, unless chaining a loop pass.
     if (!opts.chain) stopSequence();
     const now = ctx.currentTime;
     const start = opts.when != null ? Math.max(opts.when, now) : now + 0.05;
     const atk = Math.min(attack, gate * 0.5);
 
-    // Loudness contour: at level 0 every note is `peak`; above that, higher
-    // notes sound a touch louder, the tonic is emphasized, and each note gets a
-    // small random nudge so the line breathes instead of marching.
+    // Loudness contour (expressive instruments only): higher notes a touch
+    // louder, the tonic emphasized, plus a small per-note nudge so the line
+    // breathes. Plain instruments hold a constant `peak`.
     const lo = Math.min(...seq), hi = Math.max(...seq);
     const spanSemis = Math.max(1, hi - lo);
     function dynFor(semi, i) {
-      if (expr === 0) return peak;
+      if (!EX) return peak;
       const contour = EX.dyn * (((semi - lo) / spanSemis) - 0.5) * 2;
       const accent = i === 0 ? EX.accent : 0;
       const jitter = EX.dynJitter ? (Math.random() * 2 - 1) * EX.dynJitter : 0;
       return Math.max(peak * (1 + contour + accent + jitter), 0.0002);
     }
-    // Micro-timing: nudge onsets off the grid at level 2, but never the first
-    // note of a pass, so loop seams stay locked and the tonic lands on the beat.
+    // Micro-timing: nudge onsets off the grid, but never the first note of a
+    // pass, so loop seams stay locked and the tonic lands on the beat.
     function timeFor(i) {
       const base = start + i * step;
-      if (EX.timing === 0 || i === 0) return base;
+      if (!EX || EX.timing === 0 || i === 0) return base;
       return base + (Math.random() * 2 - 1) * EX.timing;
     }
     function scheduleOnNote(semi, i, t) {
@@ -305,7 +310,7 @@ const AudioKit = (() => {
     }
 
     if (connected) {
-      renderConnected(ctx, baseMidi, seq, {
+      renderConnected(ctx, timbre, baseMidi, seq, {
         start, step, gate, atk, release, peak, EX, dynFor, timeFor, scheduleOnNote,
       });
     } else {
@@ -313,9 +318,9 @@ const AudioKit = (() => {
         const t = timeFor(i);
         const p = dynFor(semi, i);
         const osc = ctx.createOscillator();
-        const voice = celloFilters(ctx);
+        const voice = timbre.makeFilters(ctx);
         const gain = ctx.createGain();
-        osc.type = 'sawtooth';
+        osc.type = timbre.wave;
         osc.frequency.value = midiToFreq(baseMidi + semi);
         gain.gain.setValueAtTime(0.0001, t);
         gain.gain.linearRampToValueAtTime(p, t + atk);
@@ -327,9 +332,9 @@ const AudioKit = (() => {
           gain.gain.setValueAtTime(susLevel, Math.max(decayEnd, t + gate - release));
         }
         gain.gain.exponentialRampToValueAtTime(0.0001, t + gate);
-        // Bow "bite": a brief brightening on the attack, tied to the note's
-        // dynamic. Silent at level 0 (bite = 0) so timbre is unchanged there.
-        if (EX.bite > 0) applyBite(voice, t, atk, EX.bite);
+        // Bow "bite": a brief brightening on the attack (expressive instruments
+        // whose timbre has a lowpass to sweep).
+        if (EX && EX.bite > 0 && voice.lp) applyBite(voice, t, atk, EX.bite);
         osc.connect(voice.input);
         voice.output.connect(gain).connect(ctx.destination);
         osc.start(t);
@@ -353,6 +358,30 @@ const AudioKit = (() => {
     }
     return start + seq.length * step;
   }
+
+  // Build an instrument from a profile: { name, timbre, expression? }. Returns
+  // an object exposing playSequence(baseMidi, seq, opts) that renders with the
+  // profile's voice. All instruments share one scheduler and audio context, so
+  // only one instrument's sequence sounds at a time (stopSequence stops it).
+  function createInstrument(profile) {
+    const instr = {
+      name: profile.name || 'instrument',
+      timbre: profile.timbre,
+      expression: profile.expression || null,
+    };
+    instr.playSequence = (baseMidi, seq, opts = {}) => renderSequence(instr, baseMidi, seq, opts);
+    return instr;
+  }
+
+  // The natural cello — the site's default melodic voice.
+  const cello = createInstrument({ name: 'cello', timbre: CELLO_TIMBRE, expression: CELLO_EXPRESSION });
+  // Plain, un-phrased cello: keeps the original note-by-note playback for pages
+  // that haven't yet migrated to an expressive instrument.
+  const plainCello = createInstrument({ name: 'cello-plain', timbre: CELLO_TIMBRE, expression: null });
+
+  // Back-compat: the legacy top-level player. New code should reach for an
+  // instrument (e.g. AudioKit.instruments.cello) instead.
+  function playSequence(baseMidi, seq, opts) { return plainCello.playSequence(baseMidi, seq, opts); }
 
   // Sustained root with an optional perfect fifth. A sub-audible noise layer
   // keeps Bluetooth codecs from silence-gating the steady tone.
@@ -596,5 +625,10 @@ const AudioKit = (() => {
     };
   }
 
-  return { FIFTH_RATIO, midiToFreq, pitchToMidi, midiToName, playSequence, stopSequence, currentTime, createDrone, createPolySynth, resume: resumeCtxs };
+  return {
+    FIFTH_RATIO, midiToFreq, pitchToMidi, midiToName,
+    playSequence, stopSequence, currentTime,
+    createInstrument, instruments: { cello },
+    createDrone, createPolySynth, resume: resumeCtxs,
+  };
 })();
