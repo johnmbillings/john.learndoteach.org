@@ -191,11 +191,15 @@ function expand(oneOctave, n) {
 // is just the ascending form reversed.
 const seqAsc = (mode) => expand(mode.intervals, octaves);
 const seqDesc = (mode) => expand(mode.descIntervals || mode.intervals, octaves).reverse();
-// up then back down, with the top note as a single turnaround.
+// Up then back down. When "repeat top & bottom" is on the top turnaround note
+// is struck twice (…C♯ D D C♯…); otherwise it's a single turnaround. The bottom
+// is handled at the loop seam in schedulePass (its trailing copy is dropped when
+// the ends aren't repeated), so both ends now honor the toggle symmetrically.
 const seqUpDown = (mode) => {
   const up = expand(mode.intervals, octaves);
   const down = expand(mode.descIntervals || mode.intervals, octaves);
-  return up.concat(down.slice(0, -1).reverse());
+  const back = (repeatEnds ? down : down.slice(0, -1)).reverse();
+  return up.concat(back);
 };
 
 function clearReadouts() {
