@@ -105,10 +105,19 @@ node tools/check-assets.mjs
 
 GitHub Pages serves the `main` branch root. A `.nojekyll` file disables Jekyll
 so files are served as-is (this is a plain static site, not a Jekyll site).
-Pushing/merging to `main` redeploys.
+Pushing/merging to `main` redeploys via the `deploy-pages` workflow
+(`.github/workflows/deploy-pages.yml`), which uploads the repo root and deploys
+it with `actions/deploy-pages`.
 
-**Gotcha:** if a change isn't showing up live after a few minutes, the Pages
-build may be stuck or cached, not your code. Check the repo's **Actions** tab
-for the "pages build and deployment" run, and note that the custom domain can
-cache HTML harder than a browser hard-refresh clears — a fresh deploy purges
-it.
+For this workflow to be the active deploy path, the repo's Pages **source** must
+be set to **GitHub Actions** (Settings → Pages → Build and deployment → Source).
+The workflow also has a `workflow_dispatch` trigger, so a stuck deploy can be
+re-run on demand from the **Actions** tab, and a `concurrency` policy that
+cancels an in-progress deploy when a newer one starts (so a hung deploy no longer
+blocks the next push).
+
+**Gotcha:** if a change isn't showing up live after a few minutes, the deploy
+may be stuck or the HTML cached, not your code. Check the repo's **Actions** tab
+for the latest `deploy-pages` run (re-run it if it's stuck), and note that the
+custom domain can cache HTML harder than a browser hard-refresh clears — a fresh
+deploy purges it.
