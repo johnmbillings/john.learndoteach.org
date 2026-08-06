@@ -1,0 +1,51 @@
+name: deploy-pages
+
+# Explicit GitHub Pages deploy for this static site. Replaces the automatic
+# "pages build and deployment" flow so we control the deploy — most importantly
+# the concurrency policy and a manual re-run button (workflow_dispatch), because
+# the managed deploy has intermittently hung in "queued" and needed a human to
+# re-run it.
+#
+# NOTE: for this workflow to take over, the repo's Pages *source* must be set to
+# "GitHub Actions" (Settings → Pages → Build and deployment → Source). While the
+# source is still "Deploy from a branch", GitHub keeps running its own build and
+# this workflow will error at the "deploy" step.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Least-privilege token: read the repo, mint the Pages OIDC token, write Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time. cancel-in-progress kills a stuck/queued deploy when a
+# newer push or a manual re-run comes in, instead of queueing behind it — the
+# fix for the "hangs forever and blocks everything" behavior.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Plain static site served from the repo root. .nojekyll is already
+          # present so files (incl. leading-underscore names) are served as-is.
+          path: .
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
