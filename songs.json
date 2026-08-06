@@ -16,6 +16,21 @@
   },
   "concerts": {},
   "songs": {
+    "driftwood-burnin": {
+      "title": "driftwood burnin'",
+      "audio": "audio/driftwood-burnin.m4a",
+      "fineTune": true,
+      "loops": [
+        { "start": "0:08", "end": "0:18", "label": "intro" },
+        { "start": "0:18", "end": "0:52", "label": "verse 1" },
+        { "start": "0:52", "end": "1:00", "label": "hook" },
+        { "start": "1:00", "end": "1:26", "label": "verse 2" },
+        { "start": "1:26", "end": "1:52", "label": "bridge" },
+        { "start": "1:52", "end": "2:32", "label": "build" },
+        { "start": "2:32", "end": "2:40", "label": "break" },
+        { "start": "2:40", "end": "3:47", "label": "final section" }
+      ]
+    },
     "burgmuller-nocturnes": {
       "title": "Friedrich Burgmüller (1806–1874) — 3 Nocturnes for Cello and Guitar",
       "videoId": "Hdj6Hv6ANsY"
