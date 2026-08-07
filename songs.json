@@ -20,16 +20,16 @@
       "title": "driftwood burnin'",
       "audio": "audio/driftwood-burnin.m4a",
       "fineTune": true,
-      "footer": "Retuned from the original A=432 take to standard A=440 (≈1.85% faster).",
+      "footer": "Retuned to concert pitch A=440 (the original take sat slightly flat, measured ~437 after the first pass).",
       "loops": [
         { "start": "0:08", "end": "0:18", "label": "intro" },
         { "start": "0:18", "end": "0:51", "label": "verse 1" },
         { "start": "0:51", "end": "0:59", "label": "hook" },
         { "start": "0:59", "end": "1:24", "label": "verse 2" },
-        { "start": "1:24", "end": "1:50", "label": "bridge" },
-        { "start": "1:50", "end": "2:29", "label": "build" },
-        { "start": "2:29", "end": "2:37", "label": "break" },
-        { "start": "2:37", "end": "3:43", "label": "final section" }
+        { "start": "1:24", "end": "1:49", "label": "bridge" },
+        { "start": "1:49", "end": "2:28", "label": "build" },
+        { "start": "2:28", "end": "2:36", "label": "break" },
+        { "start": "2:36", "end": "3:41", "label": "final section" }
       ]
     },
     "burgmuller-nocturnes": {
