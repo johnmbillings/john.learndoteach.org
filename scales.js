@@ -64,6 +64,27 @@ const MODES = [
   { name: 'Chromatic',               group: 'other', noKey: true,   intervals: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
 ];
 
+// --- arpeggios ------------------------------------------------------------
+// Built on the tonal center's root: the two triads plus the seven 7th-chord
+// qualities (the same set as the jazz-7ths page). Intervals end on the octave
+// (12) so they reuse the scales' expand()/seq* helpers unchanged. letterSteps
+// spell each tone by letter-name (a 3rd is 2 letters up, a 7th 6, the octave 7)
+// so accidentals read correctly (e.g. C dim7's 7th is B𝄫, not A). A seventh
+// chord spans no single major/minor key, so arpeggios are engraved with an
+// empty key signature and every accidental drawn explicitly — matching how the
+// jazz-7ths page presents them. Shared by makeNamer/expand via `intervals`.
+const ARPEGGIOS = [
+  { name: 'Major',         intervals: [0, 4, 7, 12],     letterSteps: [0, 2, 4, 7] },
+  { name: 'Minor',         intervals: [0, 3, 7, 12],     letterSteps: [0, 2, 4, 7] },
+  { name: 'Major 7',       intervals: [0, 4, 7, 11, 12], letterSteps: [0, 2, 4, 6, 7] },
+  { name: 'Minor 7',       intervals: [0, 3, 7, 10, 12], letterSteps: [0, 2, 4, 6, 7] },
+  { name: 'Dominant 7',    intervals: [0, 4, 7, 10, 12], letterSteps: [0, 2, 4, 6, 7] },
+  { name: 'Minor 7 ♭5',    intervals: [0, 3, 6, 10, 12], letterSteps: [0, 2, 4, 6, 7] },
+  { name: 'Minor Major 7', intervals: [0, 3, 7, 11, 12], letterSteps: [0, 2, 4, 6, 7] },
+  { name: 'Diminished 7',  intervals: [0, 3, 6, 9, 12],  letterSteps: [0, 2, 4, 6, 7] },
+  { name: 'Major 7 ♯5',    intervals: [0, 4, 8, 11, 12], letterSteps: [0, 2, 4, 6, 7] },
+];
+
 // --- per-row key signature -----------------------------------------------
 // Each mode is engraved with its own key signature, not the tonal center's
 // major one. A signature never exceeds 7 accidentals: a music professor writes
@@ -409,7 +430,7 @@ function select(i) {
   const c = CIRCLE[i];
   document.getElementById('center-label').textContent = c.alt ? `${c.label} / ${c.alt}` : c.label;
   drone.setRoot(pitchToMidi(CIRCLE[i].root, 3));
-  buildModes();
+  buildAll();
   persist();
 }
 
@@ -589,8 +610,16 @@ function baseOctaveFor(root, treble) {
   return Math.round((4 - 3.5 * octaves + offset - letterIdx) / 7);
 }
 
+// Rebuild both row lists together (scales + arpeggios). Rebuilding replaces the
+// play buttons, so cancel any sounding scale first — once, here, rather than in
+// each builder.
+function buildAll() {
+  stopPlayback();
+  buildModes();
+  buildArpeggios();
+}
+
 function buildModes() {
-  stopPlayback(); // rebuilding replaces the buttons; don't leave an orphan scale
   const treble = document.getElementById('toggle-treble').checked;
   const wrap = document.getElementById('modes');
   wrap.innerHTML = '';
@@ -643,6 +672,51 @@ function buildModes() {
   });
 }
 
+// Arpeggios built on the current tonal center. Structurally a lighter twin of
+// buildModes: no per-row key signature (each is engraved with an empty one, sig
+// 0, so accidentals are explicit) and no group headings — just the flat list of
+// triads and 7th chords. Everything else (staff, spelling, playback, range
+// centering) reuses the same helpers as the scales.
+function buildArpeggios() {
+  const treble = document.getElementById('toggle-treble').checked;
+  const wrap = document.getElementById('arpeggios');
+  wrap.innerHTML = '';
+  const center = CIRCLE[selectedIndex];
+  const { root, label } = center;
+  const base = pitchToMidi(root, baseOctaveFor(root, treble));
+
+  ARPEGGIOS.forEach(arp => {
+    const row = document.createElement('div');
+    row.className = 'mode-row';
+    const name = document.createElement('span');
+    name.className = 'mode-name';
+    const labelEl = document.createElement('span');
+    labelEl.className = 'mode-label';
+    labelEl.textContent = `${label} ${arp.name}`;
+    const staffNote = document.createElement('span');
+    staffNote.className = 'staff-and-note';
+    const staff = makeRowStaff(0, treble); // arpeggios carry no key signature
+    const readout = document.createElement('span');
+    readout.className = 'note-readout';
+    staffNote.append(staff, readout);
+    name.append(labelEl, staffNote);
+    const namer = makeNamer(root, arp, 0); // spells this chord's tones correctly
+    const asc = document.createElement('button');
+    asc.type = 'button';
+    asc.setAttribute('aria-label', `play ${label} ${arp.name} arpeggio ${autoDescend ? 'up and down' : 'ascending'}`);
+    asc.append(makeArrow(autoDescend ? '▲▼' : '▲'), makeLabel(autoDescend ? 'up + down' : 'ascending'));
+    asc.addEventListener('click', () =>
+      togglePlay(asc, base, () => (autoDescend ? seqUpDown(arp) : seqAsc(arp)), readout, namer, staff));
+    const desc = document.createElement('button');
+    desc.type = 'button';
+    desc.setAttribute('aria-label', `play ${label} ${arp.name} arpeggio descending`);
+    desc.append(makeArrow('▼'), makeLabel('descending'));
+    desc.addEventListener('click', () => togglePlay(desc, base, () => seqDesc(arp), readout, namer, staff));
+    row.append(name, asc, desc);
+    wrap.appendChild(row);
+  });
+}
+
 // Build a play button's parts: the arrow always shows; the word label is hidden
 // on narrow screens (via CSS) so the row fits on one line on mobile.
 function makeArrow(glyph) {
@@ -686,7 +760,7 @@ function initScaleOptions() {
   autoDescend = ad.checked; // honor a restored value
   ad.addEventListener('change', () => {
     autoDescend = ad.checked;
-    buildModes();
+    buildAll();
   });
 
   const oct = document.getElementById('octaves');
@@ -696,7 +770,7 @@ function initScaleOptions() {
   oct.addEventListener('input', () => {
     octaves = parseInt(oct.value, 10);
     octVal.textContent = octaves;
-    buildModes(); // base octave is range-dependent, so re-pick it for centering
+    buildAll(); // base octave is range-dependent, so re-pick it for centering
   });
 
   const tempo = document.getElementById('tempo');
@@ -752,7 +826,7 @@ function initViewToggles() {
   showExtra = extra.checked; // honor a restored value
   extra.addEventListener('change', () => {
     showExtra = extra.checked;
-    buildModes();
+    buildAll();
   });
 
   const keysig = document.getElementById('toggle-keysig');
@@ -766,7 +840,7 @@ function initViewToggles() {
 
   // Rebuild rows on clef change: the base octave is clef-dependent (so the
   // scale stays centered on whichever staff), so we re-pick it, not just redraw.
-  document.getElementById('toggle-treble').addEventListener('change', buildModes);
+  document.getElementById('toggle-treble').addEventListener('change', buildAll);
 }
 
 // --- settings persistence -------------------------------------------------
