@@ -219,6 +219,7 @@ function finishPlayback() {
   playingButton = null;
   currentPlay = null;
   clearReadouts();
+  updateWakeLock(); // nothing sounding from a scale now; release unless the drone holds it
 }
 
 // User-initiated stop: silence any scheduled notes and reset.
@@ -235,6 +236,7 @@ function togglePlay(button, baseMidi, makeSeq, rowReadout, namer, rowStaff) {
   if (loopTimerId) { clearTimeout(loopTimerId); loopTimerId = null; }
   playingButton = button;
   button.classList.add('playing');
+  updateWakeLock(); // keep the screen awake for the duration of the scale (this click is the gesture)
   currentPlay = { baseMidi, makeSeq, rowReadout, namer, rowStaff };
   clearReadouts();
   schedulePass(baseMidi, makeSeq, rowReadout, namer, null, false, rowStaff);
@@ -303,6 +305,37 @@ function schedulePass(baseMidi, makeSeq, rowReadout, namer, when, chain, rowStaf
 // --- drone (root + optional fifth), shared engine in audio.js ---
 // Root is set by select() during startup and on every tonal-center change.
 const drone = AudioKit.createDrone();
+
+// --- screen wake lock -----------------------------------------------------
+// Phones lock the screen on their idle timer even while audio is playing, which
+// cuts a scale off mid-practice. Hold a Screen Wake Lock whenever something is
+// sounding (a scale or the drone) so the screen stays awake, and re-acquire it
+// when the tab becomes visible again — the OS releases the lock whenever the
+// page is hidden, and returning to it is one of the few non-gesture moments the
+// spec still lets us request a fresh one.
+let wakeLock = null;
+
+async function acquireWakeLock() {
+  if (wakeLock || !('wakeLock' in navigator)) return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; });
+  } catch (e) { /* unsupported or blocked (e.g. low battery) — practice still works */ }
+}
+
+function releaseWakeLock() {
+  if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+}
+
+// Single source of truth: keep the lock iff a scale is playing or the drone is on.
+function updateWakeLock() {
+  if (playingButton || drone.playing) acquireWakeLock();
+  else releaseWakeLock();
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') updateWakeLock();
+});
 
 // --- UI ---
 function buildCircle() {
@@ -638,6 +671,7 @@ function initDroneControls() {
       btn.textContent = 'stop drone';
       btn.classList.add('on');
     }
+    updateWakeLock(); // the drone also keeps the screen awake while it sounds
   });
   const fifth = document.getElementById('drone-fifth');
   drone.setFifth(fifth.checked); // honor a restored value
