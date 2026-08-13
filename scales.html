@@ -210,11 +210,24 @@
       border-bottom: 1px solid rgba(255, 255, 255, 0.15);
       padding-bottom: 0.2rem;
     }
-    #modes {
+    #modes, #arpeggios {
       width: min(460px, 94vw);
       display: flex;
       flex-direction: column;
       gap: 0.4rem;
+    }
+    /* Top-level section divider (e.g. "arpeggios") — a touch more prominent
+       than the .mode-group sub-headings used within a list. */
+    .section-head {
+      width: min(460px, 94vw);
+      margin: 1.3rem 0 -0.2rem;
+      font-size: 1.4rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-transform: lowercase;
+      color: #9cd8ff;
+      border-bottom: 1px solid rgba(156, 216, 255, 0.3);
+      padding-bottom: 0.3rem;
     }
     .mode-row {
       display: flex;
@@ -332,7 +345,7 @@
   </div>
 
   <h1>scales</h1>
-  <p class="hint">pick a tonal center on the circle of fifths, then play each scale up or down</p>
+  <p class="hint">pick a tonal center on the circle of fifths, then play each scale or arpeggio up or down</p>
 
   <svg id="circle" viewBox="0 0 360 360" aria-label="circle of fifths"></svg>
 
@@ -389,6 +402,9 @@
   </div>
 
   <div id="modes"></div>
+
+  <div class="section-head">arpeggios</div>
+  <div id="arpeggios"></div>
 
   <script src="audio.js"></script>
   <script src="scales.js"></script>
