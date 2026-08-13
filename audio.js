@@ -161,6 +161,16 @@ const AudioKit = (() => {
     return getSeqCtx().currentTime;
   }
 
+  // Schedule a single metronome tick on the shared sequence clock at absolute
+  // time `when` (same clock as currentTime()/playSequence's `when`). Lets a page
+  // place a count-in beat before a pass. Registered in activeVoices, so
+  // stopSequence() silences a pending tick if playback is stopped during it.
+  function click(when, accent) {
+    const ctx = getSeqCtx();
+    if (ctx.state !== 'running') { try { ctx.resume(); } catch (e) {} }
+    scheduleClick(ctx, Math.max(when, ctx.currentTime), !!accent);
+  }
+
   // A brief brightening of the lowpass on a note's attack — the "bite" of a
   // bow catching the string. Dips the cutoff just under its resting value, opens
   // past it during the attack, then settles back. `amount` is a fraction of the
@@ -628,7 +638,7 @@ const AudioKit = (() => {
 
   return {
     FIFTH_RATIO, midiToFreq, pitchToMidi, midiToName,
-    playSequence, stopSequence, currentTime,
+    playSequence, stopSequence, currentTime, click,
     createInstrument, instruments: { cello },
     createDrone, createPolySynth, resume: resumeCtxs,
   };

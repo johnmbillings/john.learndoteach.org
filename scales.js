@@ -171,6 +171,7 @@ const cello = AudioKit.instruments.cello; // the natural, always-legato melodic 
 let autoDescend = false;
 let tempoBpm = 60;
 let metronomeOn = false; // audible click on each beat while a scale plays
+let countIn = true; // one-beat count-in tick before a scale starts (time to set the bow)
 let loopOn = false;
 let repeatEnds = false; // when looping, repeat the turnaround (top/bottom) notes
 let playingButton = null; // the play button whose scale is currently sounding
@@ -260,7 +261,7 @@ function togglePlay(button, baseMidi, makeSeq, rowReadout, namer, rowStaff) {
   updateWakeLock(); // keep the screen awake for the duration of the scale (this click is the gesture)
   currentPlay = { baseMidi, makeSeq, rowReadout, namer, rowStaff };
   clearReadouts();
-  schedulePass(baseMidi, makeSeq, rowReadout, namer, null, false, rowStaff);
+  schedulePass(baseMidi, makeSeq, rowReadout, namer, null, false, rowStaff, true); // fresh start: count-in
 }
 
 // Re-trigger the current looping scale so a toggled option takes effect now
@@ -269,18 +270,26 @@ function restartIfLooping() {
   if (playingButton && loopOn && currentPlay) {
     if (loopTimerId) { clearTimeout(loopTimerId); loopTimerId = null; }
     clearReadouts();
-    schedulePass(currentPlay.baseMidi, currentPlay.makeSeq, currentPlay.rowReadout, currentPlay.namer, null, false, currentPlay.rowStaff);
+    // Already mid-practice (bow is set): re-sync without another count-in.
+    schedulePass(currentPlay.baseMidi, currentPlay.makeSeq, currentPlay.rowReadout, currentPlay.namer, null, false, currentPlay.rowStaff, false);
   }
 }
 
 // Play one pass, then either schedule the next pass exactly on the audio clock
 // (gapless loop) or finish. `when` is the absolute start time (null = default
 // lead-in); `chain` keeps the previous pass's tail so the seam is seamless.
-function schedulePass(baseMidi, makeSeq, rowReadout, namer, when, chain, rowStaff) {
+// `lead` (fresh start only) delays the first note by one beat and ticks a
+// count-in on that beat, so there's time to set the bow before the scale begins.
+function schedulePass(baseMidi, makeSeq, rowReadout, namer, when, chain, rowStaff, lead) {
   const seq = makeSeq();
   const step = (60 / tempoBpm) / SUBDIVS[subdivIndex].perBeat;
+  const beat = 60 / tempoBpm; // one quarter-note beat, independent of the note subdivision
   const center = document.getElementById('playing-note');
   const trebleEl = document.getElementById('toggle-treble');
+  // One-beat count-in on a fresh start: push the first note a beat later and
+  // tick once on the empty lead beat (below, after playSequence clears the clock).
+  const doLead = !!lead && countIn;
+  const startWhen = doLead ? AudioKit.currentTime() + 0.05 + beat : when;
   // When looping without repeating the turnaround, drop a trailing note that
   // duplicates the first (e.g. up-then-down) so the bottom isn't struck twice.
   const noRepeat = loopOn && !repeatEnds && seq.length > 1 && seq[0] === seq[seq.length - 1];
@@ -291,7 +300,7 @@ function schedulePass(baseMidi, makeSeq, rowReadout, namer, when, chain, rowStaf
     attack: LEGATO.atk,
     sustain: LEGATO.sustain,
     release: LEGATO.release,
-    when,
+    when: startWhen,
     chain,
     legato: true, // always fully connected → the cello's glided legato voice
     clickInterval: metronomeOn ? 60 / tempoBpm : 0,
@@ -306,6 +315,10 @@ function schedulePass(baseMidi, makeSeq, rowReadout, namer, when, chain, rowStaf
       }
     },
   });
+  // Count-in tick on the lead beat. Scheduled AFTER playSequence, whose fresh-
+  // start stopSequence() would otherwise cancel this just-scheduled tick. A plain
+  // (unaccented) tick, one beat before the first note lands on the downbeat.
+  if (doLead) AudioKit.click(startWhen - beat, false);
   if (loopOn) {
     // Set up the next pass a touch before the seam so its notes are scheduled
     // ahead of time and the loop stays perfectly continuous.
@@ -313,7 +326,7 @@ function schedulePass(baseMidi, makeSeq, rowReadout, namer, when, chain, rowStaf
     const delay = Math.max(0, (nextStart - lead - AudioKit.currentTime()) * 1000);
     loopTimerId = setTimeout(() => {
       if (loopOn && playingButton) {
-        schedulePass(baseMidi, makeSeq, rowReadout, namer, nextStart, true, rowStaff);
+        schedulePass(baseMidi, makeSeq, rowReadout, namer, nextStart, true, rowStaff, false);
       } else {
         loopTimerId = setTimeout(finishPlayback, Math.max(0, (nextStart - AudioKit.currentTime()) * 1000));
       }
@@ -787,6 +800,10 @@ function initScaleOptions() {
     restartIfLooping(); // start/stop ticks immediately on a running loop
   });
 
+  const countInEl = document.getElementById('count-in');
+  countIn = countInEl.checked; // honor a restored value
+  countInEl.addEventListener('change', () => { countIn = countInEl.checked; });
+
   const subdiv = document.getElementById('subdiv');
   const subdivVal = document.getElementById('subdiv-val');
   const showSubdiv = () => {
@@ -855,6 +872,7 @@ const PREFS = [
   { id: 'octaves',       key: 'octaves',     kind: 'num', min: 1,  max: 3,   ev: 'input' },
   { id: 'tempo',         key: 'tempo',       kind: 'num', min: 40, max: 300, ev: 'input' },
   { id: 'metronome',     key: 'metronome',   kind: 'bool',   ev: 'change' },
+  { id: 'count-in',      key: 'countIn',     kind: 'bool',   ev: 'change' },
   { id: 'subdiv',        key: 'subdiv',      kind: 'num', min: 0,  max: SUBDIVS.length - 1, ev: 'input' },
   { id: 'loop',          key: 'loop',        kind: 'bool',   ev: 'change' },
   { id: 'repeat-ends',   key: 'repeatEnds',  kind: 'bool',   ev: 'change' },
