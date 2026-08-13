@@ -352,6 +352,15 @@
       </select>
     </label>
     <label class="ctl">
+      subdivide
+      <select id="subdiv">
+        <option value="1" selected>none</option>
+        <option value="2">eighths</option>
+        <option value="3">triplets</option>
+        <option value="4">sixteenths</option>
+      </select>
+    </label>
+    <label class="ctl">
       sound
       <select id="sound">
         <option value="wood" selected>woodblock</option>
@@ -377,11 +386,14 @@
     let beatsPerBar = 4;
     let accentOn = true;
     let sound = 'wood';
+    let subdiv = 1;   // ticks per beat: 1 quarter, 2 eighths, 3 triplets, 4 sixteenths
     let playing = false;
 
     // ---------- audio (lookahead scheduler — "A Tale of Two Clocks") ----------
     const AC = window.AudioContext || window.webkitAudioContext;
     let ctx = null;
+    let masterGain = null;       // one boost stage so every tick reads louder
+    const VOLUME = 1.7;          // overall loudness (>1 = boost over the raw ticks)
     const LOOKAHEAD = 0.1;       // seconds of audio scheduled ahead
     const TICK_MS = 25;          // scheduler wake interval
     let nextNoteTime = 0;        // ctx time of the next beat
@@ -392,25 +404,36 @@
     const scheduled = [];
 
     function ensureCtx() {
-      if (!ctx) ctx = new AC();
+      if (!ctx) {
+        ctx = new AC();
+        masterGain = ctx.createGain();
+        masterGain.gain.value = VOLUME;
+        masterGain.connect(ctx.destination);
+      }
       if (ctx.state === 'suspended') ctx.resume();
       return ctx;
     }
 
-    // Percussive click synth. Each sound is a short enveloped burst; the
-    // accented downbeat is a touch louder and brighter.
-    function playTick(time, accent) {
+    // Percussive click synth. Each sound is a short enveloped burst. `level`
+    // picks one of three voices: 'accent' (the bright, loud downbeat), 'beat'
+    // (a normal main beat), and 'sub' (a subdivision tick — softer and pitched
+    // up so the offbeats sit under the beats instead of competing with them).
+    function playTick(time, level) {
       const c = ctx;
+      const accent = level === 'accent';
+      const sub = level === 'sub';
+      const lvl = sub ? 0.5 : 1;      // subdivisions are quieter than the beat
+      const fMul = sub ? 1.18 : 1;    // ...and a touch higher, so they read as offbeats
       const gain = c.createGain();
-      gain.connect(c.destination);
+      gain.connect(masterGain);
 
       if (sound === 'beep') {
         const osc = c.createOscillator();
         osc.type = 'sine';
-        osc.frequency.value = accent ? 1320 : 880;
+        osc.frequency.value = (accent ? 1320 : 880) * fMul;
         osc.connect(gain);
         gain.gain.setValueAtTime(0.0001, time);
-        gain.gain.exponentialRampToValueAtTime(accent ? 0.5 : 0.34, time + 0.005);
+        gain.gain.exponentialRampToValueAtTime((accent ? 0.5 : 0.34) * lvl, time + 0.005);
         gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.09);
         osc.start(time); osc.stop(time + 0.1);
         return;
@@ -420,30 +443,30 @@
         // woodblock: triangle body + a filtered-noise transient
         const osc = c.createOscillator();
         osc.type = 'triangle';
-        osc.frequency.setValueAtTime(accent ? 1750 : 1300, time);
-        osc.frequency.exponentialRampToValueAtTime(accent ? 900 : 700, time + 0.02);
+        osc.frequency.setValueAtTime((accent ? 1750 : 1300) * fMul, time);
+        osc.frequency.exponentialRampToValueAtTime((accent ? 900 : 700) * fMul, time + 0.02);
         osc.connect(gain);
         gain.gain.setValueAtTime(0.0001, time);
-        gain.gain.exponentialRampToValueAtTime(accent ? 0.6 : 0.42, time + 0.002);
+        gain.gain.exponentialRampToValueAtTime((accent ? 0.6 : 0.42) * lvl, time + 0.002);
         gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.055);
         osc.start(time); osc.stop(time + 0.06);
 
         const noise = burst(c, 0.03);
         const bp = c.createBiquadFilter();
-        bp.type = 'bandpass'; bp.frequency.value = accent ? 2600 : 2000; bp.Q.value = 1.2;
+        bp.type = 'bandpass'; bp.frequency.value = (accent ? 2600 : 2000) * fMul; bp.Q.value = 1.2;
         const ng = c.createGain();
-        ng.gain.setValueAtTime(accent ? 0.35 : 0.22, time);
+        ng.gain.setValueAtTime((accent ? 0.35 : 0.22) * lvl, time);
         ng.gain.exponentialRampToValueAtTime(0.0001, time + 0.03);
-        noise.connect(bp).connect(ng).connect(c.destination);
+        noise.connect(bp).connect(ng).connect(masterGain);
         noise.start(time); noise.stop(time + 0.03);
         return;
       }
 
       if (sound === 'tick') {
         const bp = c.createBiquadFilter();
-        bp.type = 'bandpass'; bp.frequency.value = accent ? 4200 : 3000; bp.Q.value = 0.8;
+        bp.type = 'bandpass'; bp.frequency.value = (accent ? 4200 : 3000) * fMul; bp.Q.value = 0.8;
         const noise = burst(c, 0.02);
-        gain.gain.setValueAtTime(accent ? 0.3 : 0.18, time);
+        gain.gain.setValueAtTime((accent ? 0.3 : 0.18) * lvl, time);
         gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.022);
         noise.connect(bp).connect(gain);
         noise.start(time); noise.stop(time + 0.025);
@@ -453,10 +476,10 @@
       // 'click' — crisp square burst (classic digital metronome)
       const osc = c.createOscillator();
       osc.type = 'square';
-      osc.frequency.value = accent ? 2000 : 1500;
+      osc.frequency.value = (accent ? 2000 : 1500) * fMul;
       osc.connect(gain);
       gain.gain.setValueAtTime(0.0001, time);
-      gain.gain.exponentialRampToValueAtTime(accent ? 0.34 : 0.22, time + 0.001);
+      gain.gain.exponentialRampToValueAtTime((accent ? 0.34 : 0.22) * lvl, time + 0.001);
       gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.035);
       osc.start(time); osc.stop(time + 0.04);
     }
@@ -477,9 +500,14 @@
     function scheduler() {
       while (nextNoteTime < ctx.currentTime + LOOKAHEAD) {
         const accent = accentOn && beatsPerBar > 1 && beatInBar === 0;
-        playTick(nextNoteTime, accent);
+        const spb = secondsPerBeat();
+        playTick(nextNoteTime, accent ? 'accent' : 'beat');
         scheduled.push({ beat: beatInBar, time: nextNoteTime, accent });
-        nextNoteTime += secondsPerBeat();
+        // Fill the beat with subdivision ticks (eighths/triplets/sixteenths).
+        for (let s = 1; s < subdiv; s++) {
+          playTick(nextNoteTime + spb * s / subdiv, 'sub');
+        }
+        nextNoteTime += spb;
         beatInBar = (beatInBar + 1) % beatsPerBar;
       }
     }
@@ -607,6 +635,7 @@
       buildDots();
     });
     document.getElementById('sound').addEventListener('change', e => { sound = e.target.value; });
+    document.getElementById('subdiv').addEventListener('change', e => { subdiv = parseInt(e.target.value, 10); });
     document.getElementById('accent-toggle').addEventListener('change', e => {
       accentOn = e.target.checked;
       buildDots();
