@@ -281,6 +281,11 @@ function restartIfLooping() {
 // `lead` (fresh start only) delays the first note by one beat and ticks a
 // count-in on that beat, so there's time to set the bow before the scale begins.
 function schedulePass(baseMidi, makeSeq, rowReadout, namer, when, chain, rowStaff, lead) {
+  // A user-initiated start (not a loop seam) re-binds output to whatever's
+  // connected now — so playback follows into CarPlay / a Bluetooth speaker
+  // instead of a stale, silent context. Must run before currentTime() below so
+  // the lead/loop scheduling uses the fresh context's clock.
+  if (lead) AudioKit.prepareOutput();
   const seq = makeSeq();
   const step = (60 / tempoBpm) / SUBDIVS[subdivIndex].perBeat;
   const beat = 60 / tempoBpm; // one quarter-note beat, independent of the note subdivision
@@ -320,9 +325,12 @@ function schedulePass(baseMidi, makeSeq, rowReadout, namer, when, chain, rowStaf
   // (unaccented) tick, one beat before the first note lands on the downbeat.
   if (doLead) AudioKit.click(startWhen - beat, false);
   if (loopOn) {
-    // Set up the next pass a touch before the seam so its notes are scheduled
-    // ahead of time and the loop stays perfectly continuous.
-    const lead = Math.min(0.1, toPlay.length * step * 0.5);
+    // Set up the next pass ahead of the seam so its notes are scheduled early
+    // and the loop stays continuous. A generous lead (capped at half the pass so
+    // we never run away scheduling) absorbs setTimeout jitter when the main
+    // thread is busy — otherwise the timer can fire late and glitch the seam,
+    // most noticeably on mobile / over CarPlay.
+    const lead = Math.min(0.25, toPlay.length * step * 0.5);
     const delay = Math.max(0, (nextStart - lead - AudioKit.currentTime()) * 1000);
     loopTimerId = setTimeout(() => {
       if (loopOn && playingButton) {

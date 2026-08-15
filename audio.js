@@ -50,8 +50,43 @@ const AudioKit = (() => {
   const liveCtxs = new Set();
   const AC = window.AudioContext || window.webkitAudioContext;
 
+  // Ask for a larger, stable output buffer ('playback') instead of the default
+  // 'interactive' hint, which uses the SMALLEST buffer for low latency. That
+  // small buffer underruns and crackles/jitters over high-latency routes like
+  // CarPlay / Bluetooth — the extra few ms of latency it trades away is
+  // imperceptible for practice (and playback already leads with a count-in).
+  // Fall back if a browser rejects the options form of the constructor.
+  function makeCtx() {
+    try { return new AC({ latencyHint: 'playback' }); }
+    catch (e) { return new AC(); }
+  }
+
+  // A continuous sub-audible noise floor on the sequence context. Bluetooth /
+  // CarPlay codecs gate or duck the channel whenever they see (near-)silence —
+  // the gap before the first note, and the low dips between legato notes — and
+  // reopening it as sound resumes comes back as a stutter. A faint constant
+  // noise keeps the codec's channel open so playback stays smooth. This is the
+  // same trick the drone already uses for its sustained tone; scale playback
+  // never had it. Inaudible on a normal speaker; lives and dies with the context
+  // (not registered in activeVoices, so stopSequence leaves it running between
+  // passes and while idle, keeping the Bluetooth link warm for the next note).
+  function attachKeepAlive(ctx) {
+    try {
+      const buf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buf; src.loop = true;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass'; bp.frequency.value = 4000; bp.Q.value = 0.5;
+      const g = ctx.createGain(); g.gain.value = 0.006; // sub-audible, above codec gate threshold
+      src.connect(bp).connect(g).connect(ctx.destination);
+      src.start();
+    } catch (e) {}
+  }
+
   function getSeqCtx() {
-    if (!seqCtx) { seqCtx = new AC(); liveCtxs.add(seqCtx); }
+    if (!seqCtx) { seqCtx = makeCtx(); liveCtxs.add(seqCtx); attachKeepAlive(seqCtx); }
     return seqCtx;
   }
   function resumeCtxs() {
@@ -65,6 +100,37 @@ const AudioKit = (() => {
     document.addEventListener('visibilitychange', () => { if (!document.hidden) resumeCtxs(); });
     window.addEventListener('focus', resumeCtxs);
     window.addEventListener('pageshow', resumeCtxs);
+  }
+
+  // Re-bind audio output to whatever device is connected RIGHT NOW. iOS locks an
+  // AudioContext to the sample rate of the output route that was active when it
+  // was created; connect CarPlay or a Bluetooth speaker afterward and the old
+  // context keeps running but plays SILENCE (works on the phone speaker, dead in
+  // the car — until a reload). Pages call this at the top of a user-initiated
+  // start, BEFORE reading currentTime() for scheduling, so each fresh play builds
+  // a context matched to the current route. Loop seams reuse the running context
+  // (chain), so loops stay sample-accurate. Same recreate-per-start approach the
+  // drone already uses. Returns the fresh context.
+  function prepareOutput() {
+    stopSequence(); // fade + cancel anything still scheduled on the old context
+    if (seqCtx) {
+      const old = seqCtx;
+      liveCtxs.delete(old);
+      setTimeout(() => { try { old.close(); } catch (e) {} }, 300);
+    }
+    seqCtx = makeCtx();
+    liveCtxs.add(seqCtx);
+    try {
+      if (seqCtx.state !== 'running') seqCtx.resume();
+      // A one-sample silent buffer nudges iOS to actually open the (new) output
+      // route; a cold context can otherwise stay mute until a source has run.
+      const b = seqCtx.createBufferSource();
+      b.buffer = seqCtx.createBuffer(1, 1, seqCtx.sampleRate);
+      b.connect(seqCtx.destination);
+      b.start(0);
+    } catch (e) {}
+    attachKeepAlive(seqCtx); // keep the Bluetooth/CarPlay channel warm (no stutter)
+    return seqCtx;
   }
 
   // A single metronome tick scheduled on the shared sequence clock at time `t`.
@@ -404,7 +470,7 @@ const AudioKit = (() => {
 
     function start() {
       if (nodes) return;
-      const ctx = new AC();
+      const ctx = makeCtx(); // larger buffer: stable over CarPlay / Bluetooth
       liveCtxs.add(ctx);
       if (ctx.state !== 'running') { try { ctx.resume(); } catch (e) {} }
       const root = midiToFreq(rootMidi);
@@ -469,6 +535,20 @@ const AudioKit = (() => {
     function setVolume(v) {
       volume = v;
       if (nodes) nodes.gain.gain.setTargetAtTime(v, nodes.ctx.currentTime, 0.03);
+    }
+
+    // Recover a running drone after an audio-route change (e.g. connecting
+    // CarPlay): its context is bound to the old output and would fall silent, so
+    // rebuild on the current route, preserving root/fifth/volume. A short
+    // debounce coalesces the burst of events a single connect emits.
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices &&
+        typeof navigator.mediaDevices.addEventListener === 'function') {
+      let routeTimer = null;
+      navigator.mediaDevices.addEventListener('devicechange', () => {
+        if (!nodes) return;
+        clearTimeout(routeTimer);
+        routeTimer = setTimeout(() => { if (nodes) { stop(); start(); } }, 250);
+      });
     }
 
     return {
@@ -638,7 +718,7 @@ const AudioKit = (() => {
 
   return {
     FIFTH_RATIO, midiToFreq, pitchToMidi, midiToName,
-    playSequence, stopSequence, currentTime, click,
+    playSequence, stopSequence, currentTime, click, prepareOutput,
     createInstrument, instruments: { cello },
     createDrone, createPolySynth, resume: resumeCtxs,
   };
