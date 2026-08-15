@@ -50,8 +50,19 @@ const AudioKit = (() => {
   const liveCtxs = new Set();
   const AC = window.AudioContext || window.webkitAudioContext;
 
+  // Ask for a larger, stable output buffer ('playback') instead of the default
+  // 'interactive' hint, which uses the SMALLEST buffer for low latency. That
+  // small buffer underruns and crackles/jitters over high-latency routes like
+  // CarPlay / Bluetooth — the extra few ms of latency it trades away is
+  // imperceptible for practice (and playback already leads with a count-in).
+  // Fall back if a browser rejects the options form of the constructor.
+  function makeCtx() {
+    try { return new AC({ latencyHint: 'playback' }); }
+    catch (e) { return new AC(); }
+  }
+
   function getSeqCtx() {
-    if (!seqCtx) { seqCtx = new AC(); liveCtxs.add(seqCtx); }
+    if (!seqCtx) { seqCtx = makeCtx(); liveCtxs.add(seqCtx); }
     return seqCtx;
   }
   function resumeCtxs() {
@@ -83,7 +94,7 @@ const AudioKit = (() => {
       liveCtxs.delete(old);
       setTimeout(() => { try { old.close(); } catch (e) {} }, 300);
     }
-    seqCtx = new AC();
+    seqCtx = makeCtx();
     liveCtxs.add(seqCtx);
     try {
       if (seqCtx.state !== 'running') seqCtx.resume();
@@ -434,7 +445,7 @@ const AudioKit = (() => {
 
     function start() {
       if (nodes) return;
-      const ctx = new AC();
+      const ctx = makeCtx(); // larger buffer: stable over CarPlay / Bluetooth
       liveCtxs.add(ctx);
       if (ctx.state !== 'running') { try { ctx.resume(); } catch (e) {} }
       const root = midiToFreq(rootMidi);
