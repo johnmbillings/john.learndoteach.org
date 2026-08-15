@@ -281,6 +281,11 @@ function restartIfLooping() {
 // `lead` (fresh start only) delays the first note by one beat and ticks a
 // count-in on that beat, so there's time to set the bow before the scale begins.
 function schedulePass(baseMidi, makeSeq, rowReadout, namer, when, chain, rowStaff, lead) {
+  // A user-initiated start (not a loop seam) re-binds output to whatever's
+  // connected now — so playback follows into CarPlay / a Bluetooth speaker
+  // instead of a stale, silent context. Must run before currentTime() below so
+  // the lead/loop scheduling uses the fresh context's clock.
+  if (lead) AudioKit.prepareOutput();
   const seq = makeSeq();
   const step = (60 / tempoBpm) / SUBDIVS[subdivIndex].perBeat;
   const beat = 60 / tempoBpm; // one quarter-note beat, independent of the note subdivision

@@ -67,6 +67,36 @@ const AudioKit = (() => {
     window.addEventListener('pageshow', resumeCtxs);
   }
 
+  // Re-bind audio output to whatever device is connected RIGHT NOW. iOS locks an
+  // AudioContext to the sample rate of the output route that was active when it
+  // was created; connect CarPlay or a Bluetooth speaker afterward and the old
+  // context keeps running but plays SILENCE (works on the phone speaker, dead in
+  // the car — until a reload). Pages call this at the top of a user-initiated
+  // start, BEFORE reading currentTime() for scheduling, so each fresh play builds
+  // a context matched to the current route. Loop seams reuse the running context
+  // (chain), so loops stay sample-accurate. Same recreate-per-start approach the
+  // drone already uses. Returns the fresh context.
+  function prepareOutput() {
+    stopSequence(); // fade + cancel anything still scheduled on the old context
+    if (seqCtx) {
+      const old = seqCtx;
+      liveCtxs.delete(old);
+      setTimeout(() => { try { old.close(); } catch (e) {} }, 300);
+    }
+    seqCtx = new AC();
+    liveCtxs.add(seqCtx);
+    try {
+      if (seqCtx.state !== 'running') seqCtx.resume();
+      // A one-sample silent buffer nudges iOS to actually open the (new) output
+      // route; a cold context can otherwise stay mute until a source has run.
+      const b = seqCtx.createBufferSource();
+      b.buffer = seqCtx.createBuffer(1, 1, seqCtx.sampleRate);
+      b.connect(seqCtx.destination);
+      b.start(0);
+    } catch (e) {}
+    return seqCtx;
+  }
+
   // A single metronome tick scheduled on the shared sequence clock at time `t`.
   // A short high "click" (square burst with a near-instant decay) so it cuts
   // through the sustained cello tone; the downbeat is pitched up and a touch
@@ -471,6 +501,20 @@ const AudioKit = (() => {
       if (nodes) nodes.gain.gain.setTargetAtTime(v, nodes.ctx.currentTime, 0.03);
     }
 
+    // Recover a running drone after an audio-route change (e.g. connecting
+    // CarPlay): its context is bound to the old output and would fall silent, so
+    // rebuild on the current route, preserving root/fifth/volume. A short
+    // debounce coalesces the burst of events a single connect emits.
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices &&
+        typeof navigator.mediaDevices.addEventListener === 'function') {
+      let routeTimer = null;
+      navigator.mediaDevices.addEventListener('devicechange', () => {
+        if (!nodes) return;
+        clearTimeout(routeTimer);
+        routeTimer = setTimeout(() => { if (nodes) { stop(); start(); } }, 250);
+      });
+    }
+
     return {
       start, stop, retune, setRoot, setFifth, setVolume,
       get playing() { return !!nodes; },
@@ -638,7 +682,7 @@ const AudioKit = (() => {
 
   return {
     FIFTH_RATIO, midiToFreq, pitchToMidi, midiToName,
-    playSequence, stopSequence, currentTime, click,
+    playSequence, stopSequence, currentTime, click, prepareOutput,
     createInstrument, instruments: { cello },
     createDrone, createPolySynth, resume: resumeCtxs,
   };
