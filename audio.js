@@ -61,8 +61,32 @@ const AudioKit = (() => {
     catch (e) { return new AC(); }
   }
 
+  // A continuous sub-audible noise floor on the sequence context. Bluetooth /
+  // CarPlay codecs gate or duck the channel whenever they see (near-)silence —
+  // the gap before the first note, and the low dips between legato notes — and
+  // reopening it as sound resumes comes back as a stutter. A faint constant
+  // noise keeps the codec's channel open so playback stays smooth. This is the
+  // same trick the drone already uses for its sustained tone; scale playback
+  // never had it. Inaudible on a normal speaker; lives and dies with the context
+  // (not registered in activeVoices, so stopSequence leaves it running between
+  // passes and while idle, keeping the Bluetooth link warm for the next note).
+  function attachKeepAlive(ctx) {
+    try {
+      const buf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buf; src.loop = true;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass'; bp.frequency.value = 4000; bp.Q.value = 0.5;
+      const g = ctx.createGain(); g.gain.value = 0.006; // sub-audible, above codec gate threshold
+      src.connect(bp).connect(g).connect(ctx.destination);
+      src.start();
+    } catch (e) {}
+  }
+
   function getSeqCtx() {
-    if (!seqCtx) { seqCtx = makeCtx(); liveCtxs.add(seqCtx); }
+    if (!seqCtx) { seqCtx = makeCtx(); liveCtxs.add(seqCtx); attachKeepAlive(seqCtx); }
     return seqCtx;
   }
   function resumeCtxs() {
@@ -105,6 +129,7 @@ const AudioKit = (() => {
       b.connect(seqCtx.destination);
       b.start(0);
     } catch (e) {}
+    attachKeepAlive(seqCtx); // keep the Bluetooth/CarPlay channel warm (no stutter)
     return seqCtx;
   }
 
