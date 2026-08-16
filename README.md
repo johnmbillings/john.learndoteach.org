@@ -57,6 +57,46 @@ It appears automatically on the home page and at `song.html?s=my-song`.
 | `footer` | HTML note shown below the controls. |
 | `lyrics` | Preformatted lyrics text shown at the bottom. |
 
+### Auto-detecting loop sections
+
+`tools/detect_loops.py` listens to a song and suggests where its sections
+start, so a new page begins with real loop times instead of guesses:
+
+```
+python3 tools/detect_loops.py audio/driftwood-burnin.m4a
+python3 tools/detect_loops.py 'https://youtu.be/VIDEOID' \
+    --slug my-song --video-id VIDEOID --title 'my song'
+```
+
+Plain output is a `loops` array to paste into the song's entry; with `--slug`
+it prints the whole entry, indented to drop straight into the `songs` object.
+
+How it works: the audio is reduced to two frames per second and described
+twice per frame — chroma (which pitch classes sound) and MFCCs (what the
+texture sounds like). Each description becomes a self-similarity matrix, and a
+Foote checkerboard kernel slides down the diagonal to score how much the music
+changes at each instant. Harmony and timbre vote separately, and the summed
+novelty curve is peak-picked into boundaries.
+
+| Flag | Use |
+|------|-----|
+| `--min-len` | Shortest allowed section, seconds (default 8). Raise for fewer, longer loops. |
+| `--delta` | Peak threshold above the local average (default 0.05). Lower finds more boundaries. |
+| `--kernel` | How far either side a boundary is judged over (default 6s). Raise for long, slow sections. |
+| `--max-loops` | Keep only the N strongest boundaries. |
+| `--embed` | Frames of context per feature vector (default 4 = 2s); `1` disables. |
+| `--label-prefix` | Auto-label loops, e.g. `section` → `section 1`. |
+
+Needs `numpy` and `ffmpeg`, plus `yt-dlp` when the input is a URL.
+
+**Treat the output as a first draft.** Checked against the hand-labelled
+`driftwood-burnin` loops, the defaults find 7 of its 9 boundaries within 5s
+(6 of the 8 named sections land within about a second or two), but roughly
+half the boundaries it reports are extra sub-phrase splits. Expect to delete a
+few and nudge the rest — set `"fineTune": true` on the song to get the ±0.1s
+buttons. It hears *changes in sound*, so two musically distinct verses played
+with identical instrumentation may not register a boundary at all.
+
 ### The drone
 
 The drone (borrowed from the [mojotrio](https://github.com/johnmbillings/mojotrio)
