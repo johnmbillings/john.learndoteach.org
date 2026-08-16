@@ -1,0 +1,3 @@
+# Python bytecode from tools/ scripts (e.g. detect_loops.py)
+__pycache__/
+*.pyc
