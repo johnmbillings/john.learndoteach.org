@@ -252,12 +252,13 @@ function init(slug) {
   }
 
   addLoopBtn.addEventListener('click', () => {
-    if (loops.length === 0) return;
-    const last = loops[loops.length - 1];
-    const startVal = last.end.value;
-    const startSec = parseTime(startVal);
     const fmt = fineTune ? formatTimeFine : formatTime;
-    createLoopElement(startVal, fmt(startSec + 10));
+    // A song with no loops yet still needs a first one to build from. Carry the
+    // previous end through as typed — reformatting it would round away tenths
+    // on a song that has them without "fineTune".
+    const last = loops[loops.length - 1];
+    const startVal = last ? last.end.value : fmt(0);
+    createLoopElement(startVal, fmt(parseTime(startVal) + 10));
   });
 
   playBtn.addEventListener('click', () => {
