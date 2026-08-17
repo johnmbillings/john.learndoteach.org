@@ -85,7 +85,20 @@ def fetch_url(url, workdir):
     out = os.path.join(workdir, 'audio.%(ext)s')
     cmd = yt_dlp_command() + ['-f', 'bestaudio/best', '-o', out,
                               '--no-playlist', '--quiet', url]
-    subprocess.run(cmd, check=True)
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError:
+        sys.exit(
+            'error: yt-dlp could not download that URL.\n'
+            '  YouTube changes how it serves audio every few months, so a\n'
+            '  yt-dlp more than a release or two old fails on videos that a\n'
+            '  current one handles fine. Update it:\n'
+            '      brew install yt-dlp\n'
+            '      python3 -m pip install -U yt-dlp\n'
+            '  Recent yt-dlp needs Python 3.10+, so on an older Python pip\n'
+            '  quietly installs a stale version -- the Homebrew build sidesteps\n'
+            '  that by bringing its own Python.\n'
+            '  Failing that, save the audio by hand and pass the file instead.')
     files = [f for f in os.listdir(workdir) if f.startswith('audio.')]
     if not files:
         sys.exit('error: yt-dlp produced no audio file.')
