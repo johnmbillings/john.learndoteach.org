@@ -19,7 +19,16 @@
     "blue-eyes-crying-in-the-rain": {
       "title": "blue eyes crying in the rain",
       "audio": "audio/blue-eyes-crying-in-the-rain.m4a",
-      "fineTune": true
+      "fineTune": true,
+      "loops": [
+        { "start": "0:00.0", "end": "0:25.0" },
+        { "start": "0:25.0", "end": "0:38.6" },
+        { "start": "0:38.6", "end": "0:53"   },
+        { "start": "0:53",   "end": "1:06.7" },
+        { "start": "1:06.7", "end": "1:33"   },
+        { "start": "1:33",   "end": "1:45.7" },
+        { "start": "1:45.7", "end": "2:12"   }
+      ]
     },
     "driftwood-burnin": {
       "title": "driftwood burnin'",
