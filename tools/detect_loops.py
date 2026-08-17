@@ -56,15 +56,35 @@ def find_ffmpeg():
         import imageio_ffmpeg
         return imageio_ffmpeg.get_ffmpeg_exe()
     except Exception:
-        sys.exit('error: ffmpeg not found. Install it, or `pip install imageio-ffmpeg`.')
+        sys.exit('error: ffmpeg not found. Install it (macOS: "brew install ffmpeg", '
+                 'Debian/Ubuntu: "sudo apt install ffmpeg"), or get a private copy '
+                 'with "python3 -m pip install imageio-ffmpeg".')
+
+
+def yt_dlp_command():
+    """yt-dlp as a command list.
+
+    Prefer the binary, but fall back to running the module with this same
+    interpreter: `pip install --user` drops the binary somewhere PATH often
+    does not reach (on macOS, ~/Library/Python/3.x/bin), so "not on PATH" is
+    a poor test for "not installed".
+    """
+    exe = shutil.which('yt-dlp')
+    if exe:
+        return [exe]
+    try:
+        import yt_dlp  # noqa: F401
+    except ImportError:
+        sys.exit('error: yt-dlp not found. Install it with '
+                 '"python3 -m pip install yt-dlp" to read URLs.')
+    return [sys.executable, '-m', 'yt_dlp']
 
 
 def fetch_url(url, workdir):
     """Download the audio track of a URL with yt-dlp; return the local path."""
-    if not shutil.which('yt-dlp'):
-        sys.exit('error: yt-dlp not found. `pip install yt-dlp` to read URLs.')
     out = os.path.join(workdir, 'audio.%(ext)s')
-    cmd = ['yt-dlp', '-f', 'bestaudio/best', '-o', out, '--no-playlist', '--quiet', url]
+    cmd = yt_dlp_command() + ['-f', 'bestaudio/best', '-o', out,
+                              '--no-playlist', '--quiet', url]
     subprocess.run(cmd, check=True)
     files = [f for f in os.listdir(workdir) if f.startswith('audio.')]
     if not files:
