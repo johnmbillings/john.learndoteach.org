@@ -57,6 +57,20 @@ It appears automatically on the home page and at `song.html?s=my-song`.
 | `footer` | HTML note shown below the controls. |
 | `lyrics` | Preformatted lyrics text shown at the bottom. |
 
+### Placing loops by ear
+
+Every song page shows a live `at M:SS.s` readout of the playing position, and
+each loop field has a **set** button that stamps that position into it. So a
+section can be captured while listening: play, hit **set** on `start` where it
+begins, **set** on `end` where it stops, then trim with the ±0.1s buttons
+(`"fineTune": true`).
+
+`+` adds a loop starting where the previous one ended, and works on a song with
+no loops at all — it seeds the first one at `0:00`. Audio-mode songs also get
+the browser's own player, so the track can be scrubbed while hunting for a
+boundary. Loops placed this way live only in the page until they are written
+back into `songs.json`.
+
 ### Auto-detecting loop sections
 
 `tools/detect_loops.py` listens to a song and suggests where its sections

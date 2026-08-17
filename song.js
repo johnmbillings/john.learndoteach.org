@@ -47,6 +47,7 @@ function init(slug) {
   const audioWrapper = document.getElementById('audio-wrapper');
   const scoreWrapper = document.getElementById('score-wrapper');
   const scoreImg = document.getElementById('score-img');
+  const timeDisplay = document.getElementById('time-display');
 
   // --- Scale buttons (data-driven via the song's "scales" field) ---
   function setupScales(scales) {
@@ -121,6 +122,37 @@ function init(slug) {
     return `${m}:${s}.${tenths % 10}`;
   }
 
+  // Where playback currently is, whichever engine is driving it. Returns 0
+  // rather than throwing while the YouTube player is still starting up.
+  function currentTime() {
+    try {
+      if (isVideoMode) {
+        return playerReady && player && player.getCurrentTime ? player.getCurrentTime() : 0;
+      }
+      if (isAudioMode) return audioElement.currentTime || 0;
+    } catch (e) {}
+    return 0;
+  }
+
+  function updateTimeDisplay() {
+    timeDisplay.textContent = formatTimeFine(currentTime());
+  }
+
+  // Stamp the playing position into a loop field, so sections can be placed
+  // by ear instead of by arithmetic.
+  function makeSetButton(input) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'set-btn';
+    b.textContent = 'set';
+    b.title = 'set to the current playback position';
+    b.setAttribute('aria-label', `set ${input.className} to the current playback position`);
+    b.addEventListener('click', () => {
+      input.value = (fineTune ? formatTimeFine : formatTime)(currentTime());
+    });
+    return b;
+  }
+
   function nudge(input, delta) {
     const cur = parseTime(input.value);
     const base = Number.isFinite(cur) ? cur : 0;
@@ -164,6 +196,7 @@ function init(slug) {
     startInput.className = 'start';
     startInput.value = startVal;
     startLabel.appendChild(startInput);
+    startLabel.appendChild(makeSetButton(startInput));
     if (fineTune) startLabel.appendChild(makeNudgeButtons(startInput));
 
     const endLabel = document.createElement('label');
@@ -173,6 +206,7 @@ function init(slug) {
     endInput.className = 'end';
     endInput.value = endVal;
     endLabel.appendChild(endInput);
+    endLabel.appendChild(makeSetButton(endInput));
     if (fineTune) endLabel.appendChild(makeNudgeButtons(endInput));
 
     const btn = document.createElement('button');
@@ -358,6 +392,10 @@ function init(slug) {
       // Show the first loop's score by default
       const firstScore = loops.find(l => l.scoreSrc);
       if (firstScore) showScore(firstScore.scoreSrc);
+
+      // Keep the readout live. Polling covers both engines: the YouTube API
+      // has no time event at all, and audio "timeupdate" only fires ~4x/sec.
+      setInterval(updateTimeDisplay, 100);
 
       // Initialize YouTube player if video mode
       if (isVideoMode) {
