@@ -80,25 +80,28 @@ def yt_dlp_command():
     return [sys.executable, '-m', 'yt_dlp']
 
 
-def fetch_url(url, workdir):
+def fetch_url(url, workdir, cookies_from_browser=None):
     """Download the audio track of a URL with yt-dlp; return the local path."""
     out = os.path.join(workdir, 'audio.%(ext)s')
     cmd = yt_dlp_command() + ['-f', 'bestaudio/best', '-o', out,
                               '--no-playlist', '--quiet', url]
+    if cookies_from_browser:
+        cmd += ['--cookies-from-browser', cookies_from_browser]
     try:
         subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError:
         sys.exit(
             'error: yt-dlp could not download that URL.\n'
-            '  YouTube changes how it serves audio every few months, so a\n'
-            '  yt-dlp more than a release or two old fails on videos that a\n'
-            '  current one handles fine. Update it:\n'
-            '      brew install yt-dlp\n'
-            '      python3 -m pip install -U yt-dlp\n'
-            '  Recent yt-dlp needs Python 3.10+, so on an older Python pip\n'
-            '  quietly installs a stale version -- the Homebrew build sidesteps\n'
-            '  that by bringing its own Python.\n'
-            '  Failing that, save the audio by hand and pass the file instead.')
+            '  A "403 Forbidden" usually means YouTube declined to serve a\n'
+            '  signed-out request rather than that anything is broken. Retry\n'
+            '  with the cookies of a browser you are signed in to:\n'
+            '      --cookies-from-browser safari      (or chrome, firefox, edge)\n'
+            '  An older error -- "page needs to be reloaded", or a SABR warning\n'
+            '  -- instead points at a stale yt-dlp. On Python 3.9 pip silently\n'
+            '  installs a long-outdated release, since current yt-dlp needs\n'
+            '  3.10+; "brew install yt-dlp" brings its own Python.\n'
+            '  Either way, saving the audio by hand and passing the file works:\n'
+            '      python3 detect_loops.py ~/Downloads/song.m4a')
     files = [f for f in os.listdir(workdir) if f.startswith('audio.')]
     if not files:
         sys.exit('error: yt-dlp produced no audio file.')
@@ -300,7 +303,7 @@ def build(args):
         src = args.source
         if src.startswith(('http://', 'https://')):
             print(f'fetching {src} ...', file=sys.stderr)
-            src = fetch_url(src, workdir)
+            src = fetch_url(src, workdir, args.cookies_from_browser)
         y = decode(src, ffmpeg)
 
     duration = len(y) / SR
@@ -349,6 +352,10 @@ def main():
     p.add_argument('--delta', type=float, default=0.05,
                    help='peak threshold above the local average (default: 0.05; '
                         'lower finds more boundaries)')
+    p.add_argument('--cookies-from-browser', default=None, metavar='BROWSER',
+                   help='hand yt-dlp the cookies of a browser you are signed in '
+                        'to (safari, chrome, firefox, edge); needed when YouTube '
+                        'answers 403 to a signed-out request')
     p.add_argument('--label-prefix', default=None,
                    help='auto-label the loops, e.g. "section" -> "section 1"')
     p.add_argument('--no-trim-silence', dest='trim_silence', action='store_false',
