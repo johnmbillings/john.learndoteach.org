@@ -16,6 +16,11 @@
   },
   "concerts": {},
   "songs": {
+    "blue-eyes-crying-in-the-rain": {
+      "title": "blue eyes crying in the rain",
+      "audio": "audio/blue-eyes-crying-in-the-rain.m4a",
+      "fineTune": true
+    },
     "driftwood-burnin": {
       "title": "driftwood burnin'",
       "audio": "audio/driftwood-burnin.m4a",
