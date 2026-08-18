@@ -65,7 +65,15 @@
     "falling-slowly": {
       "title": "Glen Hansard — Falling Slowly",
       "videoId": "agf4tUnxotA",
-      "fineTune": true
+      "fineTune": true,
+      "loops": [
+        { "start": "0:00.0", "end": "0:13"   },
+        { "start": "0:13",   "end": "0:27"   },
+        { "start": "0:27",   "end": "0:42"   },
+        { "start": "0:42",   "end": "0:56.0" },
+        { "start": "0:56.0", "end": "1:29"   },
+        { "start": "1:29",   "end": "1:39.0" }
+      ]
     },
     "burgmuller-nocturnes": {
       "title": "Friedrich Burgmüller (1806–1874) — 3 Nocturnes for Cello and Guitar",
