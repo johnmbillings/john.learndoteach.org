@@ -57,11 +57,33 @@ let loopOn = true;
 
 // Shift layouts, one per key root: [{ on, drop }] — `on` is the index of the
 // scale note the hand shifts during, `drop` how far it travels below that note
-// in semitones. G major starts with the C-string shift: the fourth finger plays
-// B and carries down a minor third to G♯, where the first finger can cross to C
-// on the G string.
-const DEFAULT_SHIFTS = [{ on: 2, drop: 3 }];
-let shiftsByRoot = { G: DEFAULT_SHIFTS.map(s => ({ ...s })) };
+// in semitones.
+//
+// The defaults are derived, not guessed. Fingered 1–2–4 with a forward
+// extension, a major scale falls onto the strings in groups of three: degrees
+// 1-2-3, then 4-5-6, then 7-8-9, each group starting on the first finger a
+// string higher. So the hand shifts on the LAST note of each group — degrees 3,
+// 6 and 9, i.e. indices 2, 5 and 8. Crossing puts the first finger a fifth above
+// where it sat, and the hand lands closed (the extension is a forward reach made
+// after it arrives), so the fourth finger carrying the hand comes to rest a
+// major third below the note being crossed to:
+//
+//   index 2, drop 3   →  a minor third down, landing on the RAISED TONIC
+//                        (G♯ in G major). Never in the key — this is the one
+//                        the ear has to be taught.
+//   index 5, drop 2   →  a whole step down, landing on the DOMINANT (D in G).
+//   index 8, drop 2   →  a whole step down, landing on the OCTAVE (G in G);
+//                        only reached with two octaves selected.
+//
+// All three fall out of the scale's shape, so they're the same in every key —
+// which is why transposing a layout around the circle is the right thing to do.
+// What does vary is the instrument: where a crossing note happens to be an open
+// string (low D and A major especially) there's no shift at all, and × removes
+// it. Two octaves also end with four notes that need a shift UP the A string,
+// a gesture this page doesn't model.
+const DEFAULT_SHIFTS = [{ on: 2, drop: 3 }, { on: 5, drop: 2 }, { on: 8, drop: 2 }];
+const defaultShifts = () => DEFAULT_SHIFTS.map(s => ({ ...s }));
+let shiftsByRoot = Object.fromEntries(CIRCLE.map(c => [c.root, defaultShifts()]));
 
 const currentRoot = () => CIRCLE[selectedIndex].root;
 const currentShifts = () => shiftsByRoot[currentRoot()] || [];
@@ -285,8 +307,13 @@ function makeShiftRow(shift, semi, namer) {
   down.addEventListener('click', () => nudge(shift, 1));
 
   const name = document.createElement('span');
-  name.className = 'ghost-name';
-  name.textContent = '⟍ ' + namer(semi - shift.drop);
+  // Only some of these are outside the key. The raised tonic under the first
+  // shift is the ear-training note; the dominant under the second is a pitch
+  // the hand passes through but the ear already knows. Colour says which.
+  const ghostSemi = semi - shift.drop;
+  const inKey = MAJOR.intervals.includes(((ghostSemi % 12) + 12) % 12);
+  name.className = 'ghost-name' + (inKey ? ' in-key' : '');
+  name.textContent = '⟍ ' + namer(ghostSemi);
 
   const up = document.createElement('button');
   up.type = 'button';
@@ -364,15 +391,10 @@ function buildCircle() {
 }
 
 function select(i) {
-  const from = CIRCLE[selectedIndex].root;
   selectedIndex = i;
   const root = currentRoot();
-  // A key you haven't set up yet inherits the shape you were just working in —
-  // the same shifts, transposed — rather than starting blank.
-  if (!shiftsByRoot[root]) {
-    const seed = shiftsByRoot[from] || DEFAULT_SHIFTS;
-    shiftsByRoot[root] = seed.map(s => ({ on: s.on, drop: s.drop }));
-  }
+  // Every key starts from the derived default; only keys you've edited differ.
+  if (!shiftsByRoot[root]) shiftsByRoot[root] = defaultShifts();
   CIRCLE.forEach((e, j) => { if (e.el) e.el.classList.toggle('selected', j === i); });
   const label = document.getElementById('center-label');
   if (label) label.textContent = CIRCLE[i].label + ' major';
