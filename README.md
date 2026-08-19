@@ -140,6 +140,19 @@ inherits the layout of the key you were last in, transposed. The stored blob
 carries a `v` — v1 hung a shift *between* two notes, so a v1 blob is ignored
 rather than misread.
 
+`shifting.html` loads its scripts with a `?v=` query. GitHub Pages serves HTML
+and JS with the same short max-age, so a reload can pick up fresh markup while
+reusing a stale script from cache — fatal the moment the two disagree about
+which controls exist (it happened: the markup dropped a toggle the cached script
+still wired up, and init died with the page half-built). **Bump `?v=` whenever
+either file changes in a way the other depends on.** As a backstop the script
+looks its controls up through `control()`, which warns and skips rather than
+throwing, so a future skew costs one dead control instead of the whole page.
+And because a phone has no console, an inline watcher shows a visible notice
+(naming the file that failed, with a cache-busting reload link) whenever
+`shifting.js` doesn't reach its last line — a script that fails to fetch
+otherwise renders a perfect-looking page that does nothing.
+
 The audible slide comes from the `shape` option added to `playSequence` in
 `audio.js`: a per-note `{ artic, tail }`, where `tail` is
 `{ semis, at, over, level }` — the pitch leaves a note partway through its beat,

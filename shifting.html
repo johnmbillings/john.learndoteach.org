@@ -151,6 +151,30 @@
     .shift-row button:hover { opacity: 1; color: #fff; }
     .note.sounding .shift-row button:hover { color: #000; }
 
+    /* Shown only when the page's scripts didn't run. Without it a failed script
+       fetch looks identical to a broken practice tool: the markup and styling
+       render perfectly and nothing works, with no way to tell why from a
+       phone. */
+    #load-error {
+      margin: 0;
+      padding: 0.8rem 1rem;
+      max-width: min(34rem, 92vw);
+      border: 1px solid rgba(232, 122, 122, 0.5);
+      color: #e8a0a0;
+      font-size: 1rem;
+      text-align: center;
+      line-height: 1.5;
+    }
+    #load-error a { color: #ffb066; }
+    #load-error .detail {
+      display: block;
+      margin-top: 0.4rem;
+      font-size: 0.8rem;
+      color: rgba(232, 160, 160, 0.7);
+      font-family: ui-monospace, monospace;
+      word-break: break-word;
+    }
+
     .strip-note {
       font-size: 0.95rem;
       color: rgba(255, 255, 255, 0.4);
@@ -247,6 +271,12 @@
     — to the note the hand has to pass through, so you learn to hear it.
   </p>
 
+  <p id="load-error" hidden>
+    this page didn't finish loading — its scripts never ran.
+    <a id="load-error-reload" href="">reload</a> to fetch a fresh copy.
+    <span class="detail" id="load-error-detail"></span>
+  </p>
+
   <svg id="circle" viewBox="0 0 360 360" aria-label="circle of fifths"></svg>
 
   <div class="center">key: <span id="center-label">—</span></div>
@@ -301,7 +331,35 @@
     </label>
   </div>
 
-  <script src="audio.js"></script>
-  <script src="shifting.js"></script>
+  <script>
+    // Watch the scripts below. A phone has no console, so a script that fails
+    // to fetch (flaky connection, a stale or negative cache entry) leaves a
+    // page that looks fine and does nothing, with no way to tell why. Listen in
+    // the capture phase — resource load failures don't bubble — and report on
+    // the page if shifting.js never reached its last line.
+    window.__shiftingProblems = [];
+    addEventListener('error', (e) => {
+      const src = e.target && e.target.src;
+      window.__shiftingProblems.push(src ? 'could not load ' + src.split('/').pop() : (e.message || 'script error'));
+    }, true);
+    addEventListener('load', () => {
+      if (window.__shiftingReady) return;
+      const box = document.getElementById('load-error');
+      const detail = document.getElementById('load-error-detail');
+      const again = document.getElementById('load-error-reload');
+      // A unique query is the one reload a cache can't answer from its own copy.
+      if (again) again.href = location.pathname + '?r=' + Date.now();
+      if (detail) detail.textContent = window.__shiftingProblems.join('; ');
+      if (box) box.hidden = false;
+    });
+  </script>
+
+  <!-- Versioned so a cached script can never pair with newer markup. GitHub
+       Pages serves both with the same short max-age, so a reload can pick up
+       fresh HTML while reusing a stale script from cache — which is fatal the
+       moment the two disagree about what controls exist. Bump ?v= whenever
+       either file changes in a way the other depends on. -->
+  <script src="audio.js?v=2"></script>
+  <script src="shifting.js?v=2"></script>
 </body>
 </html>

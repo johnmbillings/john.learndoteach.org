@@ -234,6 +234,7 @@ function schedulePass(when, chain, lead) {
 // because it happens inside the same beat.
 function buildStrip() {
   const strip = document.getElementById('strip');
+  if (!strip) return;
   strip.innerHTML = '';
   const center = CIRCLE[selectedIndex];
   const namer = makeNamer(center.root, center.sig);
@@ -325,6 +326,7 @@ function afterEdit() {
 // --- circle of fifths -----------------------------------------------------
 function buildCircle() {
   const svg = document.getElementById('circle');
+  if (!svg) return;
   const cx = 180, cy = 180, ringR = 122;
   CIRCLE.forEach((entry, i) => {
     const ang = (-90 + i * 30) * Math.PI / 180;
@@ -371,8 +373,9 @@ function select(i) {
     const seed = shiftsByRoot[from] || DEFAULT_SHIFTS;
     shiftsByRoot[root] = seed.map(s => ({ on: s.on, drop: s.drop }));
   }
-  CIRCLE.forEach((e, j) => e.el.classList.toggle('selected', j === i));
-  document.getElementById('center-label').textContent = CIRCLE[i].label + ' major';
+  CIRCLE.forEach((e, j) => { if (e.el) e.el.classList.toggle('selected', j === i); });
+  const label = document.getElementById('center-label');
+  if (label) label.textContent = CIRCLE[i].label + ' major';
   drone.setRoot(pitchToMidi(root, 3));
   buildStrip();
   persist();
@@ -383,8 +386,8 @@ function select(i) {
 const drone = AudioKit.createDrone();
 
 function initDroneControls() {
-  const btn = document.getElementById('drone-btn');
-  btn.addEventListener('click', () => {
+  const btn = control('drone-btn');
+  if (btn) btn.addEventListener('click', () => {
     if (drone.playing) {
       drone.stop();
       btn.textContent = 'drone';
@@ -396,12 +399,16 @@ function initDroneControls() {
     }
     updateWakeLock();
   });
-  const fifth = document.getElementById('drone-fifth');
-  drone.setFifth(fifth.checked);
-  fifth.addEventListener('change', () => drone.setFifth(fifth.checked));
-  const vol = document.getElementById('drone-volume');
-  drone.setVolume(parseFloat(vol.value));
-  vol.addEventListener('input', () => drone.setVolume(parseFloat(vol.value)));
+  const fifth = control('drone-fifth');
+  if (fifth) {
+    drone.setFifth(fifth.checked);
+    fifth.addEventListener('change', () => drone.setFifth(fifth.checked));
+  }
+  const vol = control('drone-volume');
+  if (vol) {
+    drone.setVolume(parseFloat(vol.value));
+    vol.addEventListener('input', () => drone.setVolume(parseFloat(vol.value)));
+  }
 }
 
 // --- screen wake lock -----------------------------------------------------
@@ -432,36 +439,54 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // --- controls -------------------------------------------------------------
+// Every control is looked up through control(), which tolerates its absence.
+// A browser can serve this script against a cached copy of the markup that
+// predates it (or the reverse): the cost of a control the other side doesn't
+// know about has to be one dead control, never a half-initialized page with no
+// scale and no key selected.
+function control(id) {
+  const el = document.getElementById(id);
+  if (!el) console.warn(`shifting: no #${id} in this page — control skipped`);
+  return el;
+}
+
 function initControls() {
-  document.getElementById('play').addEventListener('click', togglePlay);
+  const play = control('play');
+  if (play) play.addEventListener('click', togglePlay);
 
-  const tempo = document.getElementById('tempo');
-  tempoBpm = Number(tempo.value);
-  tempo.addEventListener('input', () => {
-    const n = Number(tempo.value);
-    if (Number.isFinite(n) && n >= 30 && n <= 200) { tempoBpm = n; restartIfLooping(); }
-  });
+  const tempo = control('tempo');
+  if (tempo) {
+    tempoBpm = Number(tempo.value);
+    tempo.addEventListener('input', () => {
+      const n = Number(tempo.value);
+      if (Number.isFinite(n) && n >= 30 && n <= 200) { tempoBpm = n; restartIfLooping(); }
+    });
+  }
 
-  const oct = document.getElementById('octaves');
+  const oct = control('octaves');
   const octVal = document.getElementById('octaves-val');
-  const applyOct = () => {
-    octaves = Number(oct.value);
-    octVal.textContent = oct.value;
-    buildStrip();
-    restartIfLooping();
-  };
-  applyOct();
-  oct.addEventListener('input', applyOct);
+  if (oct) {
+    const applyOct = () => {
+      octaves = Number(oct.value);
+      if (octVal) octVal.textContent = oct.value;
+      buildStrip();
+      restartIfLooping();
+    };
+    applyOct();
+    oct.addEventListener('input', applyOct);
+  }
 
-  const slide = document.getElementById('slide');
+  const slide = control('slide');
   const slideVal = document.getElementById('slide-val');
-  const applySlide = () => {
-    slidePct = Number(slide.value);
-    slideVal.textContent = slide.value + '%';
-    restartIfLooping();
-  };
-  applySlide();
-  slide.addEventListener('input', applySlide);
+  if (slide) {
+    const applySlide = () => {
+      slidePct = Number(slide.value);
+      if (slideVal) slideVal.textContent = slide.value + '%';
+      restartIfLooping();
+    };
+    applySlide();
+    slide.addEventListener('input', applySlide);
+  }
 
   const toggles = [
     ['metronome', (v) => { metronomeOn = v; }],
@@ -469,7 +494,8 @@ function initControls() {
     ['loop',      (v) => { loopOn = v; }],
   ];
   toggles.forEach(([id, apply]) => {
-    const el = document.getElementById(id);
+    const el = control(id);
+    if (!el) return;
     apply(el.checked);
     el.addEventListener('change', () => { apply(el.checked); restartIfLooping(); });
   });
@@ -497,11 +523,13 @@ const prefEl = (p) => document.getElementById(p.id);
 
 function readPref(p) {
   const el = prefEl(p);
+  if (!el) return undefined; // control absent — leave the stored value alone
   return p.kind === 'bool' ? el.checked : Number(el.value);
 }
 
 function writePref(p, v) {
   const el = prefEl(p);
+  if (!el) return;
   if (p.kind === 'bool') { if (typeof v === 'boolean') el.checked = v; }
   else { const n = Number(v); if (Number.isFinite(n)) el.value = Math.min(p.max, Math.max(p.min, n)); }
 }
@@ -509,13 +537,13 @@ function writePref(p, v) {
 // Persist on any control change (the tonal center and the shift layouts persist
 // through select()/afterEdit()).
 function initPersistence() {
-  PREFS.forEach(p => prefEl(p).addEventListener(p.ev, persist));
+  PREFS.forEach(p => { const el = prefEl(p); if (el) el.addEventListener(p.ev, persist); });
 }
 
 function persist() {
   try {
     const data = { v: PREFS_VERSION, center: selectedIndex, shifts: shiftsByRoot };
-    PREFS.forEach(p => { data[p.key] = readPref(p); });
+    PREFS.forEach(p => { const v = readPref(p); if (v !== undefined) data[p.key] = v; });
     localStorage.setItem(PREFS_KEY, JSON.stringify(data));
   } catch (e) { /* storage unavailable (private mode, etc.) — silently skip */ }
 }
@@ -548,3 +576,8 @@ initControls();
 initDroneControls();
 initPersistence();
 select(selectedIndex);
+
+// Reached only if everything above ran. The page's load handler shows a visible
+// notice when this flag is missing, which is the only way a phone can tell a
+// script that failed to fetch from a practice tool that's simply broken.
+window.__shiftingReady = true;
