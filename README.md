@@ -148,6 +148,10 @@ still wired up, and init died with the page half-built). **Bump `?v=` whenever
 either file changes in a way the other depends on.** As a backstop the script
 looks its controls up through `control()`, which warns and skips rather than
 throwing, so a future skew costs one dead control instead of the whole page.
+And because a phone has no console, an inline watcher shows a visible notice
+(naming the file that failed, with a cache-busting reload link) whenever
+`shifting.js` doesn't reach its last line — a script that fails to fetch
+otherwise renders a perfect-looking page that does nothing.
 
 The audible slide comes from the `shape` option added to `playSequence` in
 `audio.js`: a per-note `{ artic, tail }`, where `tail` is

@@ -576,3 +576,8 @@ initControls();
 initDroneControls();
 initPersistence();
 select(selectedIndex);
+
+// Reached only if everything above ran. The page's load handler shows a visible
+// notice when this flag is missing, which is the only way a phone can tell a
+// script that failed to fetch from a practice tool that's simply broken.
+window.__shiftingReady = true;
