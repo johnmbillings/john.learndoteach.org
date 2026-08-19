@@ -1,17 +1,20 @@
-// Shifting practice page. A major scale plays in strict time; wherever the hand
-// has to change position, the pitch *slides* down to the note the hand travels
-// through and sounds it on its own beat before the next note is played.
+// Shifting practice page. A major scale plays in strict time; on the note
+// before a string crossing, the pitch leaves that note partway through its own
+// beat and slides down to the note the hand passes through on its way to the
+// new position. One note, one beat, two pitches — the shift is part of the note
+// you are leaving, not an extra note of its own.
 //
-// The point is ear training, not notation: in G major the hand leaves C and
-// carries down to G♯ before the first finger crosses to C on the next string.
-// G♯ has no business in G major, so the ear rejects it — which is exactly why
-// it has to be heard, slowly and in tempo, until it stops sounding like a
-// mistake and starts sounding like a landmark.
+// The point is ear training, not notation: in G major you play B with the
+// fourth finger and slide down to G♯, which is where the hand has to sit for the
+// first finger to cross to C on the next string. G♯ has no business in G major,
+// so the ear rejects it — which is exactly why it has to be heard, slowly and
+// in tempo, until it stops sounding like a mistake and starts sounding like a
+// landmark.
 //
 // Where the shifts fall is a fingering decision, not a theory one, so the page
-// doesn't guess: click a gap between two notes to put a shift there, and ▾ ▴ to
-// move the note the hand slides to. Each key keeps its own layout, seeded from
-// whichever key you last had open — the circle of fifths is the point.
+// doesn't guess: click a note to put a shift on it, and ▾ ▴ to move the note the
+// hand slides to. Each key keeps its own layout, seeded from whichever key you
+// last had open — the circle of fifths is the point.
 //
 // Audio helpers (pitchToMidi, the cello voice, the drone) live in audio.js.
 
@@ -36,27 +39,33 @@ const CIRCLE = [
 
 const MAJOR = { intervals: [0, 2, 4, 5, 7, 9, 11, 12], letterSteps: [0, 1, 2, 3, 4, 5, 6, 7] };
 
+// How a shift is laid out inside its beat. The pitch holds, travels, and then
+// sits on the note the hand landed on for the last sliver of the beat — that
+// sliver is what the ear actually takes away, so it's fixed rather than tunable.
+const GHOST_SIT = 0.15;
+
 const { pitchToMidi } = AudioKit;
 const cello = AudioKit.instruments.cello;
 
 let selectedIndex = 1; // default G major
 let octaves = 1;
 let tempoBpm = 52;
-let slidePct = 55;     // how much of the shift's beat the pitch spends travelling
-let restate = true;    // sound the note again, on the new string, once the hand lands
+let slidePct = 35;   // share of the beat the pitch spends travelling
 let metronomeOn = true;
 let countIn = true;
 let loopOn = true;
 
-// Shift layouts, one per key root: [{ after, drop }] — `after` is the index of
-// the scale note you shift away from, `drop` how far the hand travels below it
-// in semitones. G major starts with the C-string shift: leave C, carry down a
-// major third to G♯, cross to C on the G string.
-const DEFAULT_SHIFTS = [{ after: 3, drop: 4 }];
+// Shift layouts, one per key root: [{ on, drop }] — `on` is the index of the
+// scale note the hand shifts during, `drop` how far it travels below that note
+// in semitones. G major starts with the C-string shift: the fourth finger plays
+// B and carries down a minor third to G♯, where the first finger can cross to C
+// on the G string.
+const DEFAULT_SHIFTS = [{ on: 2, drop: 3 }];
 let shiftsByRoot = { G: DEFAULT_SHIFTS.map(s => ({ ...s })) };
 
 const currentRoot = () => CIRCLE[selectedIndex].root;
 const currentShifts = () => shiftsByRoot[currentRoot()] || [];
+const shiftOn = (i) => currentShifts().find(s => s.on === i) || null;
 
 // --- note spelling (same approach as scales.js) ---------------------------
 const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
@@ -94,7 +103,9 @@ function makeNamer(root, sig) {
 }
 
 // --- the played pass ------------------------------------------------------
-// The scale's notes as semitone offsets from the tonic, across `octaves`.
+// The scale's notes as semitone offsets from the tonic, across `octaves`. These
+// are the only notes played: a shift adds no note, it bends one that's already
+// there.
 function scaleNotes() {
   const degrees = MAJOR.intervals.slice(0, -1);
   const out = [];
@@ -103,32 +114,23 @@ function scaleNotes() {
   return out;
 }
 
-// Expand the scale into the events actually heard: every note, plus — at each
-// shift — the note the hand slides through, and (optionally) the note restated
-// once the hand has landed. A shift parked past the end of the scale (left over
-// from a wider octave setting) is ignored rather than dropped, so narrowing the
-// range and widening it again doesn't lose the layout.
-function buildEvents() {
-  const notes = scaleNotes();
-  const shifts = currentShifts();
-  const out = [];
-  notes.forEach((semi, i) => {
-    out.push({ semi, kind: 'note', noteIndex: i });
-    const sh = shifts.find(s => s.after === i);
-    if (!sh || i >= notes.length - 1) return;
-    out.push({ semi: semi - sh.drop, kind: 'ghost', shift: sh });
-    if (restate) out.push({ semi, kind: 'note', noteIndex: i, restated: true });
-  });
-  return out;
+// Where inside a beat the slide happens: hold, travel, then sit on the note the
+// hand landed on for the last GHOST_SIT of the beat.
+function slideTiming(step) {
+  const over = Math.max(0.03, step * (slidePct / 100));
+  const at = Math.max(step * 0.08, step * (1 - GHOST_SIT) - over);
+  return { at, over };
 }
 
-// Per-note shaping handed to the cello voice: the hand travels quietly and
-// without re-articulating (it's one bow), and whatever follows it starts a
-// fresh stroke — on the cello that note is on a new string, under a new finger.
-function shapeFor(events, step) {
-  return events.map((e, i) => {
-    if (e.kind === 'ghost') return { slide: step * (slidePct / 100), level: 0.7, artic: 0.04 };
-    if (i > 0 && events[i - 1].kind === 'ghost') return { artic: 0.8 };
+// Per-note shaping handed to the cello voice: the shifting note carries the
+// slide in its tail, and the note after it starts a fresh stroke — on the cello
+// that note is on a new string, under a new finger.
+function shapeFor(notes, step) {
+  const { at, over } = slideTiming(step);
+  return notes.map((semi, i) => {
+    const sh = shiftOn(i);
+    if (sh && i < notes.length - 1) return { tail: { semis: -sh.drop, at, over, level: 0.72 } };
+    if (shiftOn(i - 1) && i - 1 < notes.length - 1) return { artic: 0.8 };
     return null;
   });
 }
@@ -136,17 +138,20 @@ function shapeFor(events, step) {
 // --- playback -------------------------------------------------------------
 let playing = false;
 let loopTimerId = null;
-let liveEvents = [];   // the events of the pass currently sounding
+let ghostTimers = [];  // pending "the hand is moving now" highlights
 
 function clearHighlight() {
+  ghostTimers.forEach(clearTimeout);
+  ghostTimers = [];
   document.querySelectorAll('#strip .sounding').forEach(el => el.classList.remove('sounding'));
 }
 
 function finishPlayback() {
   if (loopTimerId) { clearTimeout(loopTimerId); loopTimerId = null; }
   playing = false;
-  document.getElementById('play').classList.remove('playing');
-  document.getElementById('play').textContent = 'play';
+  const btn = document.getElementById('play');
+  btn.classList.remove('playing');
+  btn.textContent = 'play';
   clearHighlight();
   updateWakeLock();
 }
@@ -182,11 +187,11 @@ function schedulePass(when, chain, lead) {
   if (lead) AudioKit.prepareOutput();
   const center = CIRCLE[selectedIndex];
   const baseMidi = pitchToMidi(center.root, 2); // the bottom octave, in cello register
-  const events = buildEvents();
-  liveEvents = events;
-  const step = 60 / tempoBpm; // one event per beat — this is slow practice
+  const notes = scaleNotes();
+  const step = 60 / tempoBpm; // one note per beat — this is slow practice
+  const { at } = slideTiming(step);
   const startWhen = lead && countIn ? AudioKit.currentTime() + 0.05 + step : when;
-  const nextStart = cello.playSequence(baseMidi, events.map(e => e.semi), {
+  const nextStart = cello.playSequence(baseMidi, notes, {
     step,
     gate: step,
     attack: 0.025,
@@ -195,20 +200,24 @@ function schedulePass(when, chain, lead) {
     when: startWhen,
     chain,
     legato: true,
-    shape: shapeFor(events, step),
+    shape: shapeFor(notes, step),
     clickInterval: metronomeOn ? step : 0,
     clickAccent: true,
     onNote: (semi, i) => {
       clearHighlight();
-      const el = document.querySelector(`#strip [data-ev="${i}"]`);
+      const el = document.querySelector(`#strip [data-note="${i}"]`);
       if (el) el.classList.add('sounding');
+      // Light the ghost at the moment the hand actually starts moving, so what
+      // you see tracks what you hear inside the beat.
+      const ghost = el && el.querySelector('.ghost-name');
+      if (ghost) ghostTimers.push(setTimeout(() => ghost.classList.add('sounding'), at * 1000));
     },
   });
   // Scheduled after playSequence, whose fresh-start stopSequence() would
   // otherwise cancel a tick placed before it.
   if (lead && countIn) AudioKit.click(startWhen - step, false);
   if (loopOn) {
-    const ahead = Math.min(0.25, events.length * step * 0.5);
+    const ahead = Math.min(0.25, notes.length * step * 0.5);
     const delay = Math.max(0, (nextStart - ahead - AudioKit.currentTime()) * 1000);
     loopTimerId = setTimeout(() => {
       if (loopOn && playing) schedulePass(nextStart, true, false);
@@ -220,75 +229,69 @@ function schedulePass(when, chain, lead) {
 }
 
 // --- the scale strip ------------------------------------------------------
-// Rendered from the same events as the pass, so what you see is what sounds:
-// each element carries its event index, which playback highlights as it goes.
+// One chip per note — the same notes the pass plays. A chip carrying a shift
+// shows the note the hand slides to underneath it, inside the same chip,
+// because it happens inside the same beat.
 function buildStrip() {
   const strip = document.getElementById('strip');
   strip.innerHTML = '';
   const center = CIRCLE[selectedIndex];
   const namer = makeNamer(center.root, center.sig);
-  const events = buildEvents();
-  const shifts = currentShifts();
-  const lastNote = scaleNotes().length - 1;
+  const notes = scaleNotes();
 
-  events.forEach((e, i) => {
-    if (e.kind === 'ghost') {
-      strip.appendChild(makeGhost(e, i, namer));
-      return;
-    }
+  notes.forEach((semi, i) => {
+    const shift = i < notes.length - 1 ? shiftOn(i) : null;
     const chip = document.createElement('span');
-    chip.className = 'note' + (e.restated ? ' restated' : '');
-    chip.dataset.ev = i;
-    chip.textContent = namer(e.semi);
+    chip.className = 'note' + (shift ? ' has-shift' : '');
+    chip.dataset.note = i;
+
+    const name = document.createElement('span');
+    name.className = 'note-name';
+    name.textContent = namer(semi);
+    chip.appendChild(name);
+
+    if (shift) {
+      chip.appendChild(makeShiftRow(shift, semi, namer));
+    } else if (i < notes.length - 1) {
+      // The last note has nothing to cross into, so it can't carry a shift.
+      chip.classList.add('addable');
+      chip.tabIndex = 0;
+      chip.setAttribute('role', 'button');
+      chip.title = 'add a shift on this note';
+      chip.setAttribute('aria-label', `add a shift on ${namer(semi)}`);
+      const add = () => {
+        const list = shiftsByRoot[currentRoot()] || (shiftsByRoot[currentRoot()] = []);
+        list.push({ on: i, drop: 3 });
+        afterEdit();
+      };
+      chip.addEventListener('click', add);
+      chip.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); add(); }
+      });
+    }
     strip.appendChild(chip);
-    // A gap after this note, unless a shift already lives there (or it's the
-    // last note, where there's nothing left to shift into). The restated copy
-    // never gets one: it's the same scale note, and a second shift on the same
-    // note would be unreachable — buildEvents only honors the first.
-    const free = !e.restated && !shifts.some(s => s.after === e.noteIndex);
-    if (free && e.noteIndex < lastNote) strip.appendChild(makeGap(e.noteIndex));
   });
 }
 
-function makeGap(afterIndex) {
-  const b = document.createElement('button');
-  b.className = 'gap';
-  b.type = 'button';
-  b.textContent = '+';
-  b.title = 'add a shift here';
-  b.setAttribute('aria-label', 'add a shift after this note');
-  b.addEventListener('click', () => {
-    const list = shiftsByRoot[currentRoot()] || (shiftsByRoot[currentRoot()] = []);
-    list.push({ after: afterIndex, drop: 4 });
-    afterEdit();
-  });
-  return b;
-}
-
-function makeGhost(event, evIndex, namer) {
-  const wrap = document.createElement('span');
-  wrap.className = 'ghost';
-  wrap.dataset.ev = evIndex;
+function makeShiftRow(shift, semi, namer) {
+  const row = document.createElement('span');
+  row.className = 'shift-row';
 
   const down = document.createElement('button');
   down.type = 'button';
   down.textContent = '▾';
   down.setAttribute('aria-label', 'slide further down');
-  down.addEventListener('click', () => nudge(event.shift, 1));
+  down.addEventListener('click', () => nudge(shift, 1));
 
   const name = document.createElement('span');
   name.className = 'ghost-name';
-  name.textContent = namer(event.semi);
+  name.textContent = '⟍ ' + namer(semi - shift.drop);
 
   const up = document.createElement('button');
   up.type = 'button';
   up.textContent = '▴';
   up.setAttribute('aria-label', 'slide less far down');
-  up.addEventListener('click', () => nudge(event.shift, -1));
-
-  const drop = document.createElement('span');
-  drop.className = 'drop-label';
-  drop.textContent = `−${event.shift.drop}`;
+  up.addEventListener('click', () => nudge(shift, -1));
 
   const kill = document.createElement('button');
   kill.type = 'button';
@@ -296,13 +299,13 @@ function makeGhost(event, evIndex, namer) {
   kill.setAttribute('aria-label', 'remove this shift');
   kill.addEventListener('click', () => {
     const list = shiftsByRoot[currentRoot()] || [];
-    const k = list.indexOf(event.shift);
+    const k = list.indexOf(shift);
     if (k >= 0) list.splice(k, 1);
     afterEdit();
   });
 
-  wrap.append(down, name, up, drop, kill);
-  return wrap;
+  row.append(down, name, up, kill);
+  return row;
 }
 
 // A shift travels at least a semitone and at most an octave — past that it's a
@@ -366,7 +369,7 @@ function select(i) {
   // the same shifts, transposed — rather than starting blank.
   if (!shiftsByRoot[root]) {
     const seed = shiftsByRoot[from] || DEFAULT_SHIFTS;
-    shiftsByRoot[root] = seed.map(s => ({ after: s.after, drop: s.drop }));
+    shiftsByRoot[root] = seed.map(s => ({ on: s.on, drop: s.drop }));
   }
   CIRCLE.forEach((e, j) => e.el.classList.toggle('selected', j === i));
   document.getElementById('center-label').textContent = CIRCLE[i].label + ' major';
@@ -461,10 +464,9 @@ function initControls() {
   slide.addEventListener('input', applySlide);
 
   const toggles = [
-    ['restate',    (v) => { restate = v; buildStrip(); }],
-    ['metronome',  (v) => { metronomeOn = v; }],
-    ['count-in',   (v) => { countIn = v; }],
-    ['loop',       (v) => { loopOn = v; }],
+    ['metronome', (v) => { metronomeOn = v; }],
+    ['count-in',  (v) => { countIn = v; }],
+    ['loop',      (v) => { loopOn = v; }],
   ];
   toggles.forEach(([id, apply]) => {
     const el = document.getElementById(id);
@@ -476,13 +478,14 @@ function initControls() {
 // --- settings persistence -------------------------------------------------
 // One JSON blob, same shape as the other practice pages, plus the per-key shift
 // layouts — those are the page's real content, so losing them on reload would
-// make it useless.
+// make it useless. `v` guards the layout format: v1 hung a shift between two
+// notes, v2 puts it on one, so a v1 blob is ignored rather than misread.
 const PREFS_KEY = 'shifting:prefs';
+const PREFS_VERSION = 2;
 const PREFS = [
   { id: 'tempo',        key: 'tempo',      kind: 'num', min: 30, max: 200, ev: 'input' },
   { id: 'octaves',      key: 'octaves',    kind: 'num', min: 1,  max: 2,   ev: 'input' },
-  { id: 'slide',        key: 'slide',      kind: 'num', min: 15, max: 90,  ev: 'input' },
-  { id: 'restate',      key: 'restate',    kind: 'bool', ev: 'change' },
+  { id: 'slide',        key: 'slide',      kind: 'num', min: 10, max: 70,  ev: 'input' },
   { id: 'metronome',    key: 'metronome',  kind: 'bool', ev: 'change' },
   { id: 'count-in',     key: 'countIn',    kind: 'bool', ev: 'change' },
   { id: 'loop',         key: 'loop',       kind: 'bool', ev: 'change' },
@@ -511,29 +514,29 @@ function initPersistence() {
 
 function persist() {
   try {
-    const data = { center: selectedIndex, shifts: shiftsByRoot };
+    const data = { v: PREFS_VERSION, center: selectedIndex, shifts: shiftsByRoot };
     PREFS.forEach(p => { data[p.key] = readPref(p); });
     localStorage.setItem(PREFS_KEY, JSON.stringify(data));
   } catch (e) { /* storage unavailable (private mode, etc.) — silently skip */ }
 }
 
 // Validate on the way in: a stale or hand-edited blob must not be able to
-// produce a shift pointing at a note that doesn't exist, or a NaN drop.
+// produce a shift on a note that doesn't exist, or a NaN drop.
 function applyPrefs() {
   let p;
   try { p = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null'); } catch (e) { return; }
   if (!p || typeof p !== 'object') return;
   if (Number.isInteger(p.center) && p.center >= 0 && p.center < CIRCLE.length) selectedIndex = p.center;
   PREFS.forEach(entry => writePref(entry, p[entry.key]));
-  if (p.shifts && typeof p.shifts === 'object') {
+  if (p.v === PREFS_VERSION && p.shifts && typeof p.shifts === 'object') {
     const clean = {};
     CIRCLE.forEach(({ root }) => {
       const list = p.shifts[root];
       if (!Array.isArray(list)) return;
       clean[root] = list
-        .filter(s => s && Number.isInteger(s.after) && s.after >= 0 && s.after < 15
+        .filter(s => s && Number.isInteger(s.on) && s.on >= 0 && s.on < 15
                      && Number.isFinite(s.drop) && s.drop >= 1 && s.drop <= 12)
-        .map(s => ({ after: s.after, drop: Math.round(s.drop) }));
+        .map(s => ({ on: s.on, drop: Math.round(s.drop) }));
     });
     if (Object.keys(clean).length) shiftsByRoot = clean;
   }

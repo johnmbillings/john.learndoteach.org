@@ -92,62 +92,64 @@
     }
     .note {
       display: inline-flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-width: 2.4em;
+      min-width: 2.6em;
       padding: 0.3em 0.45em;
       font-size: 1.35rem;
       border: 1px solid rgba(255, 255, 255, 0.18);
       color: #ddd;
       transition: background 0.1s, color 0.1s, border-color 0.1s;
     }
-    .note.restated { border-style: dashed; color: rgba(255, 255, 255, 0.65); }
     .note.sounding { background: #9cd8ff; border-color: #9cd8ff; color: #06121c; }
+    /* A note you can put a shift on. The mark is the gesture itself: a line
+       falling away from the note, which is what the hand does. */
+    .note.addable { cursor: pointer; }
+    .note.addable::after {
+      content: '⟍';
+      font-size: 0.75rem;
+      line-height: 1;
+      color: transparent;
+      transition: color 0.12s;
+    }
+    .note.addable:hover, .note.addable:focus-visible { border-color: rgba(240, 180, 138, 0.7); outline: none; }
+    .note.addable:hover::after, .note.addable:focus-visible::after { color: rgba(240, 180, 138, 0.8); }
 
-    /* The ghost: the note under the hand as it travels. Orange, because the ear
-       has to learn it as the one pitch in the pass that is outside the key. */
-    .ghost {
+    /* The shift, drawn *inside* its note's chip — it happens inside that note's
+       beat, so it doesn't get a box of its own. Orange, because the ear has to
+       learn it as the one pitch in the pass that is outside the key. */
+    .shift-row {
       display: inline-flex;
       align-items: center;
-      gap: 0.1em;
-      padding: 0.15em 0.2em;
-      border: 1px dashed rgba(200, 116, 60, 0.7);
+      gap: 0.05em;
+      margin-top: 0.1em;
       color: #f0b48a;
-      font-size: 1.1rem;
     }
-    .ghost.sounding { background: rgba(200, 116, 60, 0.28); border-style: solid; }
-    .ghost-name { min-width: 2.2em; text-align: center; font-size: 1.25rem; }
-    .ghost button {
-      border: none;
-      background: none;
-      color: rgba(240, 180, 138, 0.75);
-      font-family: inherit;
+    .note.has-shift { border-color: rgba(200, 116, 60, 0.55); }
+    .note.has-shift.sounding .shift-row { color: #7a4322; }
+    .ghost-name {
+      min-width: 2.9em;
+      text-align: center;
       font-size: 0.95rem;
-      line-height: 1;
-      padding: 0.25em 0.3em;
-      cursor: pointer;
+      white-space: nowrap;
+      transition: color 0.1s;
     }
-    .ghost button:hover { color: #fff; }
-    .ghost .drop-label {
-      font-size: 0.7rem;
-      color: rgba(240, 180, 138, 0.6);
-      letter-spacing: 0.05em;
-      align-self: flex-end;
-      padding-bottom: 0.35em;
-    }
-
-    /* A clickable gap between two notes — where a shift can be added. */
-    .gap {
+    .ghost-name.sounding { color: #ffb066; font-weight: 600; }
+    .note.sounding .ghost-name.sounding { color: #4a2308; }
+    .shift-row button {
       border: none;
       background: none;
-      color: rgba(255, 255, 255, 0.16);
+      color: inherit;
+      opacity: 0.75;
       font-family: inherit;
-      font-size: 1rem;
-      padding: 0 0.15em;
+      font-size: 0.8rem;
+      line-height: 1;
+      padding: 0.2em 0.25em;
       cursor: pointer;
-      align-self: center;
     }
-    .gap:hover { color: #f0b48a; }
+    .shift-row button:hover { opacity: 1; color: #fff; }
+    .note.sounding .shift-row button:hover { color: #000; }
 
     .strip-note {
       font-size: 0.95rem;
@@ -240,9 +242,9 @@
 
   <h1>shifting</h1>
   <p class="hint">
-    slow shifting practice for the ear. the scale plays in time; at each shift the
-    pitch slides down to the note the hand passes through — sounded on its own
-    beat, so you learn to hear it.
+    slow shifting practice for the ear. the scale plays in time; on the note
+    before a string crossing the pitch slides down — inside that note's own beat
+    — to the note the hand has to pass through, so you learn to hear it.
   </p>
 
   <svg id="circle" viewBox="0 0 360 360" aria-label="circle of fifths"></svg>
@@ -250,7 +252,7 @@
   <div class="center">key: <span id="center-label">—</span></div>
 
   <div id="strip"></div>
-  <p class="strip-note">click a gap between two notes to add a shift there; ▾ ▴ move the note the hand slides to</p>
+  <p class="strip-note">click a note to put a shift on it; ▾ ▴ move the note the hand slides to</p>
 
   <button id="play" type="button">play</button>
 
@@ -266,13 +268,8 @@
     </label>
     <label class="ctl">
       slide
-      <input id="slide" type="range" min="15" max="90" step="5" value="55">
-      <span id="slide-val" class="ctl-val">55%</span>
-    </label>
-    <label class="switch">
-      <input id="restate" type="checkbox" checked>
-      <span class="track"><span class="thumb"></span></span>
-      play the note again after the shift
+      <input id="slide" type="range" min="10" max="70" step="5" value="35">
+      <span id="slide-val" class="ctl-val">35%</span>
     </label>
     <label class="switch">
       <input id="metronome" type="checkbox" checked>
