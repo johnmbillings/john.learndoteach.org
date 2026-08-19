@@ -257,7 +257,7 @@ const AudioKit = (() => {
   // at each boundary (EX.artic) before swelling back, and the pitch slides in
   // over a short portamento (EX.glide). A gentle vibrato fades in over the pass.
   function renderConnected(ctx, timbre, baseMidi, seq, o) {
-    const { start, step, gate, atk, release, EX, dynFor, timeFor, scheduleOnNote } = o;
+    const { start, step, gate, atk, release, EX, dynFor, timeFor, scheduleOnNote, shapeAt } = o;
     const n = seq.length;
     const osc = ctx.createOscillator();
     const voice = timbre.makeFilters(ctx);
@@ -288,9 +288,23 @@ const AudioKit = (() => {
 
     for (let i = 1; i < n; i++) {
       const t = timeFor(i);
-      osc.frequency.setTargetAtTime(midiToFreq(baseMidi + seq[i]), Math.max(start, t - 0.004), glide);
+      const sh = shapeAt(i);
+      const target = midiToFreq(baseMidi + seq[i]);
+      const from = Math.max(start, t - 0.004);
+      if (sh && sh.slide > 0) {
+        // A *heard* slide (a shift), not the near-instant smoothing of EX.glide:
+        // the pitch travels for sh.slide seconds. setTargetAtTime is ~98% of the
+        // way there after four time constants, so aim it at a quarter of the
+        // travel and pin the arrival — the note the hand lands on has to be dead
+        // in tune, since hearing it is the whole point.
+        const travel = Math.min(sh.slide, step * 0.95);
+        osc.frequency.setTargetAtTime(target, from, travel / 4);
+        osc.frequency.setValueAtTime(target, from + travel);
+      } else {
+        osc.frequency.setTargetAtTime(target, from, glide);
+      }
       const p = dynFor(seq[i], i);
-      const dip = Math.max(p * (1 - EX.artic), 0.0002);
+      const dip = Math.max(p * (1 - (sh && sh.artic != null ? sh.artic : EX.artic)), 0.0002);
       gain.gain.setTargetAtTime(dip, Math.max(start + atk, t - dipLead), dipTc); // ease down into the new note
       gain.gain.setTargetAtTime(p, t + 0.004, recTc);                            // swell back up on it
       scheduleOnNote(seq[i], i, start + i * step);
@@ -332,7 +346,9 @@ const AudioKit = (() => {
   // beat across this pass, locked to the note grid), clickAccent (accent the
   // pass's first tick — the downbeat where the tonic sounds), legato (true = the
   // articulation fully connects, so an expressive instrument renders the pass as
-  // one continuous glided voice instead of note-by-note). Returns the audio-clock
+  // one continuous glided voice instead of note-by-note), shape (per-note
+  // { slide, artic, level } overrides for connected playback — see below).
+  // Returns the audio-clock
   // time the next contiguous note would start (= start + seq.length * step), so a
   // loop can schedule the next pass exactly.
   function renderSequence(instr, baseMidi, seq, opts = {}) {
@@ -352,6 +368,15 @@ const AudioKit = (() => {
     // A fully-connected articulation on an expressive instrument becomes one
     // continuous glided voice; everything else is note-by-note.
     const connected = !!opts.legato && !!EX;
+    // Per-note shaping for connected playback: shape[i] = { slide, artic, level }.
+    //   slide  seconds the pitch takes to travel into note i — an audible
+    //          portamento (a shift), where EX.glide is just legato smoothing
+    //   artic  how far the tone eases before note i (overrides EX.artic), so a
+    //          note that starts a fresh bow stroke can be re-articulated harder
+    //   level  multiplier on note i's loudness — a hand travelling between
+    //          positions sounds under the bow's weight, not on it
+    const shape = Array.isArray(opts.shape) ? opts.shape : null;
+    const shapeAt = (i) => (shape && shape[i]) || null;
     // Never layer a second sequence over the first, unless chaining a loop pass.
     if (!opts.chain) stopSequence();
     const now = ctx.currentTime;
@@ -364,11 +389,13 @@ const AudioKit = (() => {
     const lo = Math.min(...seq), hi = Math.max(...seq);
     const spanSemis = Math.max(1, hi - lo);
     function dynFor(semi, i) {
-      if (!EX) return peak;
+      const sh = shapeAt(i);
+      const lvl = sh && sh.level != null ? sh.level : 1;
+      if (!EX) return peak * lvl;
       const contour = EX.dyn * (((semi - lo) / spanSemis) - 0.5) * 2;
       const accent = i === 0 ? EX.accent : 0;
       const jitter = EX.dynJitter ? (Math.random() * 2 - 1) * EX.dynJitter : 0;
-      return Math.max(peak * (1 + contour + accent + jitter), 0.0002);
+      return Math.max(peak * lvl * (1 + contour + accent + jitter), 0.0002);
     }
     // Micro-timing: nudge onsets off the grid, but never the first note of a
     // pass, so loop seams stay locked and the tonic lands on the beat.
@@ -388,7 +415,7 @@ const AudioKit = (() => {
 
     if (connected) {
       renderConnected(ctx, timbre, baseMidi, seq, {
-        start, step, gate, atk, release, peak, EX, dynFor, timeFor, scheduleOnNote,
+        start, step, gate, atk, release, peak, EX, dynFor, timeFor, scheduleOnNote, shapeAt,
       });
     } else {
       seq.forEach((semi, i) => {
