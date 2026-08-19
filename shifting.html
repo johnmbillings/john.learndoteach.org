@@ -137,6 +137,13 @@
     }
     .ghost-name.sounding { color: #ffb066; font-weight: 600; }
     .note.sounding .ghost-name.sounding { color: #4a2308; }
+    /* A ghost that's already in the key — the dominant the hand passes through
+       on the second shift — is a pitch the ear knows. Muted, so the one note
+       that is genuinely outside the key is the one that catches the eye. */
+    .ghost-name.in-key { color: rgba(255, 255, 255, 0.45); }
+    .ghost-name.in-key.sounding { color: #e6e6e6; }
+    .note.sounding .ghost-name.in-key { color: rgba(6, 18, 28, 0.55); }
+    .note.sounding .ghost-name.in-key.sounding { color: #06121c; }
     .shift-row button {
       border: none;
       background: none;
@@ -282,7 +289,10 @@
   <div class="center">key: <span id="center-label">—</span></div>
 
   <div id="strip"></div>
-  <p class="strip-note">click a note to put a shift on it; ▾ ▴ move the note the hand slides to</p>
+  <p class="strip-note">
+    click a note to put a shift on it; ▾ ▴ move the note the hand slides to.
+    the ghost notes in orange are the ones outside the key — those are the ones to listen for
+  </p>
 
   <button id="play" type="button">play</button>
 
@@ -359,7 +369,7 @@
        fresh HTML while reusing a stale script from cache — which is fatal the
        moment the two disagree about what controls exist. Bump ?v= whenever
        either file changes in a way the other depends on. -->
-  <script src="audio.js?v=2"></script>
-  <script src="shifting.js?v=2"></script>
+  <script src="audio.js?v=3"></script>
+  <script src="shifting.js?v=3"></script>
 </body>
 </html>

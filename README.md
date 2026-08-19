@@ -131,14 +131,38 @@ finger to cross to C on the next string. The shift adds no note and no beat; it
 bends one that's already there. The ghost pitch is deliberately outside the key:
 the point is to stop hearing it as a mistake.
 
-Where the shifts fall is a fingering decision, so the page stores rather than
-derives them: each key keeps a list of `{ on, drop }` (the index of the scale
-note the hand shifts during, and how many semitones it travels below it) in
-`localStorage` under `shifting:prefs`. Click a note in the strip to put a shift
-on it, `▾`/`▴` to move the note the hand slides to. A key you haven't set up
-inherits the layout of the key you were last in, transposed. The stored blob
-carries a `v` — v1 hung a shift *between* two notes, so a v1 blob is ignored
-rather than misread.
+Each key keeps a list of `{ on, drop }` — the index of the scale note the hand
+shifts during, and how many semitones it travels below it — in `localStorage`
+under `shifting:prefs`. Click a note in the strip to put a shift on it,
+`▾`/`▴` to move the note the hand slides to. The stored blob carries a `v` — v1
+hung a shift *between* two notes, so a v1 blob is ignored rather than misread.
+
+The defaults are derived from the fingerboard rather than guessed. Fingered
+1–2–4 with a forward extension, a major scale falls onto the strings in groups
+of three — degrees 1-2-3, then 4-5-6, then 7-8-9 — each group starting on the
+first finger a string higher. So the hand shifts on the last note of each group:
+**indices 2, 5 and 8**. Crossing puts the first finger a fifth above where it
+sat, and the hand lands closed (the extension is a forward reach made after it
+arrives), so the fourth finger carrying the hand comes to rest a major third
+below the note being crossed to:
+
+| shift | drop | lands on | in the key? |
+|---|---|---|---|
+| index 2 (3rd degree) | 3 | the raised tonic (G♯ in G) | never |
+| index 5 (6th degree) | 2 | the dominant (D in G) | always |
+| index 8 (9th degree) | 2 | the octave (G in G) | always |
+
+All three fall out of the scale's shape, so they are identical in every key —
+which is why transposing a layout around the circle is the right thing to do.
+The strip greys out a ghost note that's already in the key, leaving the raised
+tonic under the first shift as the one the eye and ear go to.
+
+What *does* vary is the instrument. Where a crossing note happens to be an open
+string — low D and A major especially — the open string covers the move and
+there is no shift; remove it with `×`. Two octaves also end with four notes that
+need a shift *up* the A string, a gesture this page doesn't model.
+
+The derivation script is `tools/cello_shifts.py`.
 
 `shifting.html` loads its scripts with a `?v=` query. GitHub Pages serves HTML
 and JS with the same short max-age, so a reload can pick up fresh markup while
