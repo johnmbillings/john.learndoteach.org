@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>shifting</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      color: #fff;
+      font-family: "Cormorant Garamond", serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      padding: 2.5rem 1rem 4rem;
+      box-sizing: border-box;
+    }
+    a { color: #9cd8ff; }
+    .back {
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      font-size: 1rem;
+      color: #666;
+      text-decoration: none;
+    }
+    .back:hover { color: #d8d8ff; }
+
+    h1 {
+      margin: 0;
+      font-size: 2.2rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: lowercase;
+    }
+    .hint {
+      margin: -0.5rem 0 0;
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.5);
+      font-style: italic;
+      text-align: center;
+      max-width: 34rem;
+    }
+
+    /* --- circle of fifths (same look as the scales page) --- */
+    #circle {
+      width: min(320px, 88vw);
+      height: auto;
+    }
+    .node circle {
+      fill: #161616;
+      stroke: #555;
+      stroke-width: 1.5;
+      transition: fill 0.15s, stroke 0.15s;
+    }
+    .node text {
+      fill: #cfcfcf;
+      font-size: 18px;
+      font-weight: 500;
+      pointer-events: none;
+    }
+    .node { cursor: pointer; }
+    .node:hover circle { stroke: #9cd8ff; }
+    .node:focus { outline: none; }
+    .node:focus-visible circle { stroke: #9cd8ff; stroke-width: 2.5; }
+    .node .alt { font-size: 12px; fill: rgba(255, 255, 255, 0.55); }
+    .node.selected circle { fill: #9cd8ff; stroke: #9cd8ff; }
+    .node.selected text { fill: #06121c; }
+
+    .center {
+      font-size: 1.4rem;
+      letter-spacing: 0.04em;
+      margin-top: -0.5rem;
+    }
+    .center #center-label { color: #9cd8ff; font-size: 1.7rem; }
+
+    /* --- the scale strip: notes, shift pills, and the gaps you add them in --- */
+    #strip {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: stretch;
+      gap: 0.15rem;
+      width: min(58rem, 96vw);
+      min-height: 3.2rem;
+    }
+    .note {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2.4em;
+      padding: 0.3em 0.45em;
+      font-size: 1.35rem;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #ddd;
+      transition: background 0.1s, color 0.1s, border-color 0.1s;
+    }
+    .note.restated { border-style: dashed; color: rgba(255, 255, 255, 0.65); }
+    .note.sounding { background: #9cd8ff; border-color: #9cd8ff; color: #06121c; }
+
+    /* The ghost: the note under the hand as it travels. Orange, because the ear
+       has to learn it as the one pitch in the pass that is outside the key. */
+    .ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.1em;
+      padding: 0.15em 0.2em;
+      border: 1px dashed rgba(200, 116, 60, 0.7);
+      color: #f0b48a;
+      font-size: 1.1rem;
+    }
+    .ghost.sounding { background: rgba(200, 116, 60, 0.28); border-style: solid; }
+    .ghost-name { min-width: 2.2em; text-align: center; font-size: 1.25rem; }
+    .ghost button {
+      border: none;
+      background: none;
+      color: rgba(240, 180, 138, 0.75);
+      font-family: inherit;
+      font-size: 0.95rem;
+      line-height: 1;
+      padding: 0.25em 0.3em;
+      cursor: pointer;
+    }
+    .ghost button:hover { color: #fff; }
+    .ghost .drop-label {
+      font-size: 0.7rem;
+      color: rgba(240, 180, 138, 0.6);
+      letter-spacing: 0.05em;
+      align-self: flex-end;
+      padding-bottom: 0.35em;
+    }
+
+    /* A clickable gap between two notes — where a shift can be added. */
+    .gap {
+      border: none;
+      background: none;
+      color: rgba(255, 255, 255, 0.16);
+      font-family: inherit;
+      font-size: 1rem;
+      padding: 0 0.15em;
+      cursor: pointer;
+      align-self: center;
+    }
+    .gap:hover { color: #f0b48a; }
+
+    .strip-note {
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.4);
+      font-style: italic;
+      margin: -0.9rem 0 0;
+      text-align: center;
+    }
+
+    /* --- controls --- */
+    .controls, .drone {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.7rem 1.4rem;
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.6);
+      max-width: min(58rem, 96vw);
+    }
+    .ctl { display: inline-flex; align-items: center; gap: 0.5em; }
+    .ctl input[type="range"] { width: 6em; }
+    .ctl-val { min-width: 2.5ch; color: #9cd8ff; }
+    .ctl input[type="number"] {
+      background: #000;
+      border: 1px solid #666;
+      color: #ddd;
+      font-family: inherit;
+      font-size: 0.95rem;
+      padding: 0.2em 0.35em;
+      width: 3.4em;
+    }
+    .ctl input[type="number"]:hover { border-color: #9cd8ff; }
+
+    button {
+      background: none;
+      border: 1px solid #666;
+      color: #ddd;
+      font-family: inherit;
+      font-size: 1rem;
+      padding: 0.35em 0.7em;
+      cursor: pointer;
+    }
+    button:hover { border-color: #9cd8ff; color: #fff; }
+    #play {
+      font-size: 1.3rem;
+      padding: 0.4em 1.6em;
+      letter-spacing: 0.05em;
+    }
+    #play.playing { border-color: #9cd8ff; color: #9cd8ff; background: rgba(156, 216, 255, 0.12); }
+    #drone-btn.on { border-color: #c8743c; color: #f0b48a; }
+
+    .switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45em;
+      cursor: pointer;
+      user-select: none;
+    }
+    .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .switch .track {
+      width: 2.4em;
+      height: 1.2em;
+      border: 1px solid #666;
+      border-radius: 1em;
+      position: relative;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .switch .thumb {
+      position: absolute;
+      top: 50%;
+      left: 0.15em;
+      width: 0.9em;
+      height: 0.9em;
+      transform: translateY(-50%);
+      background: #ddd;
+      border-radius: 50%;
+      transition: left 0.15s, background 0.15s;
+    }
+    .switch input:checked + .track { background: #24506b; border-color: #9cd8ff; }
+    .switch input:checked + .track .thumb { left: calc(100% - 1.05em); background: #9cd8ff; }
+    .drone .switch input:checked + .track { background: #7a4322; border-color: #c8743c; }
+    .drone .switch input:checked + .track .thumb { background: #f0b48a; }
+    .drone-vol { display: inline-flex; align-items: center; gap: 0.5em; }
+    .drone-vol input[type="range"] { width: 6em; }
+  </style>
+</head>
+<body>
+  <a class="back" href="index.html">← back</a>
+
+  <h1>shifting</h1>
+  <p class="hint">
+    slow shifting practice for the ear. the scale plays in time; at each shift the
+    pitch slides down to the note the hand passes through — sounded on its own
+    beat, so you learn to hear it.
+  </p>
+
+  <svg id="circle" viewBox="0 0 360 360" aria-label="circle of fifths"></svg>
+
+  <div class="center">key: <span id="center-label">—</span></div>
+
+  <div id="strip"></div>
+  <p class="strip-note">click a gap between two notes to add a shift there; ▾ ▴ move the note the hand slides to</p>
+
+  <button id="play" type="button">play</button>
+
+  <div class="controls">
+    <label class="ctl">
+      <span>♩ =</span>
+      <input id="tempo" type="number" min="30" max="200" step="1" value="52">
+    </label>
+    <label class="ctl">
+      octaves
+      <input id="octaves" type="range" min="1" max="2" step="1" value="1">
+      <span id="octaves-val" class="ctl-val">1</span>
+    </label>
+    <label class="ctl">
+      slide
+      <input id="slide" type="range" min="15" max="90" step="5" value="55">
+      <span id="slide-val" class="ctl-val">55%</span>
+    </label>
+    <label class="switch">
+      <input id="restate" type="checkbox" checked>
+      <span class="track"><span class="thumb"></span></span>
+      play the note again after the shift
+    </label>
+    <label class="switch">
+      <input id="metronome" type="checkbox" checked>
+      <span class="track"><span class="thumb"></span></span>
+      metronome
+    </label>
+    <label class="switch">
+      <input id="count-in" type="checkbox" checked>
+      <span class="track"><span class="thumb"></span></span>
+      count-in
+    </label>
+    <label class="switch">
+      <input id="loop" type="checkbox" checked>
+      <span class="track"><span class="thumb"></span></span>
+      loop
+    </label>
+  </div>
+
+  <div class="drone">
+    <button id="drone-btn" type="button">drone</button>
+    <label class="switch">
+      <input id="drone-fifth" type="checkbox" checked>
+      <span class="track"><span class="thumb"></span></span>
+      add 5th
+    </label>
+    <label class="drone-vol">
+      vol
+      <input id="drone-volume" type="range" min="0" max="0.4" step="0.01" value="0.1">
+    </label>
+  </div>
+
+  <script src="audio.js"></script>
+  <script src="shifting.js"></script>
+</body>
+</html>

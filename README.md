@@ -120,6 +120,26 @@ entirely from the song's `drone` field: `song.js` parses the note name to a
 MIDI number (`pitchToMidi`), so the same field both enables the drone and sets
 its note and label. The fifth is derived as root × 1.5.
 
+## The shifting page
+
+`shifting.html` / `shifting.js` is a standalone practice page (not a song). It
+plays a major scale in strict time and, at each shift, slides the pitch down to
+the note the hand travels through, sounding it on its own beat — in G major you
+hear `G A B C ⟍G♯ C D E F♯ G`. The ghost note is deliberately outside the key:
+the point is to stop hearing it as a mistake.
+
+Where the shifts fall is a fingering decision, so the page stores rather than
+derives them: each key keeps a list of `{ after, drop }` (the index of the note
+you shift away from, and how many semitones the hand travels below it) in
+`localStorage` under `shifting:prefs`. Click a gap in the note strip to add a
+shift, `▾`/`▴` to move the ghost note. A key you haven't set up inherits the
+layout of the key you were last in, transposed.
+
+The audible slide comes from the `shape` option added to `playSequence` in
+`audio.js`: a per-note `{ slide, artic, level }` that gives one note a real,
+timed portamento (and lets the note after it re-articulate as a fresh bow on a
+new string) instead of the near-instant legato smoothing used everywhere else.
+
 ## Assets
 
 Per-song score images live under `scores/<slug>/` (e.g.
