@@ -301,7 +301,12 @@
     </label>
   </div>
 
-  <script src="audio.js"></script>
-  <script src="shifting.js"></script>
+  <!-- Versioned so a cached script can never pair with newer markup. GitHub
+       Pages serves both with the same short max-age, so a reload can pick up
+       fresh HTML while reusing a stale script from cache — which is fatal the
+       moment the two disagree about what controls exist. Bump ?v= whenever
+       either file changes in a way the other depends on. -->
+  <script src="audio.js?v=2"></script>
+  <script src="shifting.js?v=2"></script>
 </body>
 </html>
