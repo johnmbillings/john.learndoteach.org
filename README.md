@@ -132,10 +132,17 @@ bends one that's already there. The ghost pitch is deliberately outside the key:
 the point is to stop hearing it as a mistake.
 
 Each key keeps a list of `{ on, drop }` — the index of the scale note the hand
-shifts during, and how many semitones it travels below it — in `localStorage`
-under `shifting:prefs`. Click a note in the strip to put a shift on it,
-`▾`/`▴` to move the note the hand slides to. The stored blob carries a `v` — v1
-hung a shift *between* two notes, so a v1 blob is ignored rather than misread.
+shifts during, and how many semitones it travels below it. Click a note in the
+strip to put a shift on it, `▾`/`▴` to move the note the hand slides to.
+
+`localStorage` (under `shifting:prefs`) holds **only the keys whose layout you
+have changed**, compared against the derived default. Storing all twelve freezes
+whatever the defaults were the first time you opened the page — improve the
+derivation later and every existing browser keeps the old shifts forever, with
+no way to tell a stale copy from a deliberate edit. That is exactly what
+happened between v2 and v3. The blob carries a `v` for the same reason: v1 hung
+a shift *between* two notes, v2 stored every key, so both are ignored rather
+than misread.
 
 The defaults are derived from the fingerboard rather than guessed. Fingered
 1–2–4 with a forward extension, a major scale falls onto the strings in groups
