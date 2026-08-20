@@ -85,6 +85,19 @@ const DEFAULT_SHIFTS = [{ on: 2, drop: 3 }, { on: 5, drop: 2 }, { on: 8, drop: 2
 const defaultShifts = () => DEFAULT_SHIFTS.map(s => ({ ...s }));
 let shiftsByRoot = Object.fromEntries(CIRCLE.map(c => [c.root, defaultShifts()]));
 
+// Storage keeps only the keys whose layout you've actually changed. Writing all
+// twelve would freeze whatever the defaults happened to be the first time you
+// opened the page: improve the derivation later and every existing browser
+// would keep the old shifts forever, with no way to tell a stale copy from a
+// deliberate edit. Comparing against the default is what separates the two.
+const sortedShifts = (list) => [...list].sort((a, b) => a.on - b.on);
+
+function isDefaultLayout(list) {
+  const mine = sortedShifts(list);
+  return mine.length === DEFAULT_SHIFTS.length
+    && mine.every((s, i) => s.on === DEFAULT_SHIFTS[i].on && s.drop === DEFAULT_SHIFTS[i].drop);
+}
+
 const currentRoot = () => CIRCLE[selectedIndex].root;
 const currentShifts = () => shiftsByRoot[currentRoot()] || [];
 const shiftOn = (i) => currentShifts().find(s => s.on === i) || null;
@@ -284,7 +297,11 @@ function buildStrip() {
       chip.setAttribute('aria-label', `add a shift on ${namer(semi)}`);
       const add = () => {
         const list = shiftsByRoot[currentRoot()] || (shiftsByRoot[currentRoot()] = []);
-        list.push({ on: i, drop: 3 });
+        // Where the derivation has an opinion about this note, use it — putting a
+        // shift back where one belongs should restore the real drop, not a
+        // blanket minor third. Elsewhere a minor third is the common case.
+        const derived = DEFAULT_SHIFTS.find(d => d.on === i);
+        list.push({ on: i, drop: derived ? derived.drop : 3 });
         afterEdit();
       };
       chip.addEventListener('click', add);
@@ -529,7 +546,9 @@ function initControls() {
 // make it useless. `v` guards the layout format: v1 hung a shift between two
 // notes, v2 puts it on one, so a v1 blob is ignored rather than misread.
 const PREFS_KEY = 'shifting:prefs';
-const PREFS_VERSION = 2;
+// v1 hung a shift between two notes; v2 put it on one but stored every key's
+// layout, which shadowed the derived defaults that arrived after it.
+const PREFS_VERSION = 3;
 const PREFS = [
   { id: 'tempo',        key: 'tempo',      kind: 'num', min: 30, max: 200, ev: 'input' },
   { id: 'octaves',      key: 'octaves',    kind: 'num', min: 1,  max: 2,   ev: 'input' },
@@ -564,7 +583,11 @@ function initPersistence() {
 
 function persist() {
   try {
-    const data = { v: PREFS_VERSION, center: selectedIndex, shifts: shiftsByRoot };
+    const edited = {};
+    Object.entries(shiftsByRoot).forEach(([root, list]) => {
+      if (!isDefaultLayout(list)) edited[root] = list;
+    });
+    const data = { v: PREFS_VERSION, center: selectedIndex, shifts: edited };
     PREFS.forEach(p => { const v = readPref(p); if (v !== undefined) data[p.key] = v; });
     localStorage.setItem(PREFS_KEY, JSON.stringify(data));
   } catch (e) { /* storage unavailable (private mode, etc.) — silently skip */ }
@@ -578,17 +601,17 @@ function applyPrefs() {
   if (!p || typeof p !== 'object') return;
   if (Number.isInteger(p.center) && p.center >= 0 && p.center < CIRCLE.length) selectedIndex = p.center;
   PREFS.forEach(entry => writePref(entry, p[entry.key]));
+  // Merge the keys you've edited over the derived defaults — never replace the
+  // whole table, or a key absent from storage would come up with no shifts.
   if (p.v === PREFS_VERSION && p.shifts && typeof p.shifts === 'object') {
-    const clean = {};
     CIRCLE.forEach(({ root }) => {
       const list = p.shifts[root];
       if (!Array.isArray(list)) return;
-      clean[root] = list
+      shiftsByRoot[root] = list
         .filter(s => s && Number.isInteger(s.on) && s.on >= 0 && s.on < 15
                      && Number.isFinite(s.drop) && s.drop >= 1 && s.drop <= 12)
         .map(s => ({ on: s.on, drop: Math.round(s.drop) }));
     });
-    if (Object.keys(clean).length) shiftsByRoot = clean;
   }
 }
 
