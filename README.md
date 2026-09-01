@@ -49,7 +49,7 @@ It appears automatically on the home page and at `song.html?s=my-song`.
 | `title` | Display name (required). |
 | `videoId` | YouTube id. Use this **or** `audio`. |
 | `audio` | Audio file URL. Use this **or** `videoId`. |
-| `loops` | Array of `{ start, end, label?, score? }`. Times are `M:SS` or `M:SS.s`. `label` shows above the loop; `score` is an image shown while that loop plays. |
+| `loops` | Array of `{ start, end, label?, score?, measures? }`. Times are `M:SS` or `M:SS.s`. `label` shows above the loop; `score` is an image shown while that loop plays; `measures` (e.g. `"1"`, `"4-6"`) tells `tools/scores/build_scores.py` which bars to engrave into that `score`. |
 | `fineTune` | `true` adds ±0.1s nudge buttons to loop times. |
 | `scales` | Object `{ root, items }` that shows scale-playback buttons. `root` is a note name; each item is `{ mode, label? }` where `mode` is `ionian`/`major`/`dorian`/`phrygian`/`lydian`/`mixolydian`/`aeolian`/`minor`/`natural minor`/`locrian`. `label` overrides the button text. Example: `{ "root": "A♭", "items": [{ "mode": "aeolian", "label": "A♭ Aeolian (7♭)" }, { "mode": "dorian" }] }`. |
 | `drone` | A **note name** to enable a sustained drone, e.g. `"A♭"`, `"Eb3"`, `"G2"`. Octave is optional and defaults to 3. Omit the field (or set `null`) to leave the drone off. |

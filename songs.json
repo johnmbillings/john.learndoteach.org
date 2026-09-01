@@ -5,7 +5,7 @@
       "title": "display name (required)",
       "videoId": "YouTube id — use this OR \"audio\"",
       "audio": "audio file URL — use this OR \"videoId\"",
-      "loops": "[{ start, end, label?, score? }] — times as M:SS or M:SS.s",
+      "loops": "[{ start, end, label?, score?, measures? }] — times as M:SS or M:SS.s; measures (e.g. \"1\" or \"4-6\") tells the score builder which bars to render",
       "fineTune": "true to show 0.1s nudge buttons on loop times",
       "scales": "{ root: note, items: [{ mode, label? }] } to show scale-playback buttons; mode is e.g. ionian/dorian/aeolian",
       "drone": "note name to enable a drone, e.g. \"A♭\" or \"Eb3\" (octave optional, defaults to 3); omit or null = off",
@@ -131,6 +131,15 @@
         { "start": "10:00", "end": "14:40", "label": "Danse infernale du roi Kastcheï" },
         { "start": "14:40", "end": "18:05", "label": "Berceuse" },
         { "start": "18:05", "end": "21:20", "label": "Finale" }
+      ]
+    },
+    "loiseau-de-feu-excerpts": {
+      "title": "Stravinsky — L’Oiseau de feu — practice excerpts",
+      "videoId": "VZqYPIN4CEI",
+      "fineTune": true,
+      "footer": "Practice excerpts for cello, engraved by hand from the part (imslp.org is blocked from the environment these pages are built in, so the notes were dictated rather than transcribed — check a passage against the printed part before trusting it). <b>The loop times are placeholders.</b> Play up to the passage, hit <b>set</b> on <i>start</i> and <i>end</i>, then trim with the ±0.1s buttons.",
+      "loops": [
+        { "start": "0:05", "end": "0:12", "label": "passage 1 (m. 1)", "measures": "1", "score": "scores/loiseau-de-feu/passage-1.svg" }
       ]
     }
   }
