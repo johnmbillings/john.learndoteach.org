@@ -122,15 +122,15 @@
       "title": "Stravinsky — L’Oiseau de feu (suite, 1919)",
       "videoId": "VZqYPIN4CEI",
       "fineTune": true,
-      "footer": "Orchestre philharmonique de Radio France / Mikko Franck, Philharmonie de Paris, 26 April 2019 — the 1919 suite. <b>The section times are estimates</b>, placed from the suite’s usual proportions rather than from this recording: play it through, hit <b>set</b> as each movement begins, then trim with the ±0.1s buttons.",
+      "footer": "Orchestre philharmonique de Radio France / Mikko Franck, Philharmonie de Paris, 26 April 2019 — the 1919 suite. The first four loops are set from this recording; <b>from m 39 on the times are still estimates</b>, placed from the suite’s usual proportions: play it through, hit <b>set</b> as each section begins, then trim with the ±0.1s buttons.",
       "loops": [
-        { "start": "0:05",  "end": "3:20",  "label": "Introduction" },
-        { "start": "3:20",  "end": "3:42",  "label": "L’Oiseau de feu et sa danse" },
-        { "start": "3:42",  "end": "5:00",  "label": "Variation de l’Oiseau de feu" },
-        { "start": "5:00",  "end": "10:00", "label": "Ronde des princesses" },
-        { "start": "10:00", "end": "14:40", "label": "Danse infernale du roi Kastcheï" },
-        { "start": "14:40", "end": "18:05", "label": "Berceuse" },
-        { "start": "18:05", "end": "21:20", "label": "Finale" }
+        { "start": "0:15",   "end": "1:57",   "label": "Introduction" },
+        { "start": "1:57",   "end": "3:23.6", "label": "mm 14-23" },
+        { "start": "3:23.6", "end": "3:38.3", "label": "L’Oiseau de feu et sa danse (mm 24-38)" },
+        { "start": "3:38.3", "end": "10:00",  "label": "mm 39 onward" },
+        { "start": "10:00",  "end": "14:40",  "label": "Danse infernale du roi Kastcheï" },
+        { "start": "14:40",  "end": "18:05",  "label": "Berceuse" },
+        { "start": "18:05",  "end": "21:20",  "label": "Finale" }
       ]
     }
   }
