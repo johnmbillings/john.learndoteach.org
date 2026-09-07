@@ -8,6 +8,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --accent: #9cd8ff;
+      --line: rgba(255, 255, 255, 0.12);
+      --dim: rgba(255, 255, 255, 0.5);
+    }
     body {
       margin: 0;
       background: #000;
@@ -17,11 +22,11 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 1.5rem;
-      padding: 2.5rem 1rem 4rem;
+      gap: 1.6rem;
+      padding: 2.5rem 1rem 12rem;
       box-sizing: border-box;
     }
-    a { color: #9cd8ff; }
+    a { color: var(--accent); }
     .back {
       position: fixed;
       top: 1rem;
@@ -29,6 +34,7 @@
       font-size: 1rem;
       color: #666;
       text-decoration: none;
+      z-index: 30;
     }
     .back:hover { color: #d8d8ff; }
 
@@ -40,48 +46,207 @@
       text-transform: lowercase;
     }
     .hint {
-      margin: -0.5rem 0 0;
+      margin: -0.6rem 0 0;
       font-size: 1rem;
-      color: rgba(255, 255, 255, 0.5);
+      color: var(--dim);
       font-style: italic;
       text-align: center;
+      max-width: 34rem;
     }
+    section { width: min(900px, 96vw); }
 
-    /* --- circle of fifths (root picker) --- */
-    #circle {
-      width: min(360px, 92vw);
-      height: auto;
+    /* --- tonal centre (circle of fifths) --- */
+    .key-picker {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
     }
+    #circle { width: min(300px, 78vw); height: auto; }
     .node circle {
       fill: #161616;
       stroke: #555;
       stroke-width: 1.5;
       transition: fill 0.15s, stroke 0.15s;
     }
-    .node text {
-      fill: #cfcfcf;
-      font-size: 18px;
-      font-weight: 500;
-      pointer-events: none;
-    }
+    .node text { fill: #cfcfcf; font-size: 18px; font-weight: 500; pointer-events: none; }
     .node { cursor: pointer; }
-    .node:hover circle { stroke: #9cd8ff; }
+    .node:hover circle { stroke: var(--accent); }
     .node:focus { outline: none; }
-    .node:focus-visible circle { stroke: #9cd8ff; stroke-width: 2.5; }
+    .node:focus-visible circle { stroke: var(--accent); stroke-width: 2.5; }
     .node .alt { font-size: 12px; fill: rgba(255, 255, 255, 0.55); }
-    .node.selected circle { fill: #9cd8ff; stroke: #9cd8ff; }
+    .node.selected circle { fill: var(--accent); stroke: var(--accent); }
     .node.selected text { fill: #06121c; }
+    .key-name {
+      font-size: 1.5rem;
+      letter-spacing: 0.06em;
+      color: #eee;
+    }
+    .key-name em { font-style: italic; color: var(--dim); font-size: 1.05rem; }
 
-    /* --- mini keyboard (chord visualization) --- */
+    /* --- controls --- */
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.8rem;
+    }
+    .control-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem 1rem;
+      font-size: 0.95rem;
+      color: var(--dim);
+    }
+    .control-label {
+      font-style: italic;
+      letter-spacing: 0.04em;
+    }
+    .pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid #555;
+      border-radius: 999px;
+      padding: 0.22em 0.85em;
+      color: #bbb;
+      font-size: 0.95rem;
+      cursor: pointer;
+      user-select: none;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .pill input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .pill:hover { border-color: var(--accent); color: #fff; }
+    .pill:focus-within { border-color: var(--accent); }
+    .pill.on { border-color: var(--accent); background: rgba(156, 216, 255, 0.16); color: #eaf6ff; }
+    .ctl { display: inline-flex; align-items: center; gap: 0.5em; }
+    select {
+      background: #000;
+      border: 1px solid #666;
+      color: #ddd;
+      font-family: inherit;
+      font-size: 0.95rem;
+      padding: 0.2em 0.35em;
+    }
+    select:hover { border-color: var(--accent); }
+
+    /* --- chord palette --- */
+    .palette { display: flex; flex-direction: column; gap: 1.4rem; padding-top: 0.4rem; }
+    .group-title {
+      display: flex;
+      align-items: baseline;
+      gap: 0.6rem;
+      margin: 0 0 0.55rem;
+      padding-bottom: 0.3rem;
+      border-bottom: 1px solid var(--line);
+      font-size: 1.05rem;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: lowercase;
+      color: rgba(255, 255, 255, 0.72);
+    }
+    .group-title span {
+      font-size: 0.85rem;
+      letter-spacing: 0.02em;
+      text-transform: none;
+      font-style: italic;
+      color: rgba(255, 255, 255, 0.38);
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+    .chip {
+      position: relative;
+      min-width: 5rem;
+      box-sizing: border-box;
+      padding: 0.4rem 0.55rem 0.45rem;
+      border: 1px solid #3d3d3d;
+      border-radius: 4px;
+      background: #0c0c0c;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .chip:hover { border-color: var(--accent); }
+    .chip:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
+    .chip.selected { border-color: var(--accent); background: rgba(156, 216, 255, 0.14); }
+    .chip .rn {
+      font-size: 0.78rem;
+      letter-spacing: 0.05em;
+      color: rgba(255, 255, 255, 0.45);
+    }
+    .chip.selected .rn { color: rgba(255, 255, 255, 0.7); }
+    .chip .sym {
+      font-size: 1.3rem;
+      line-height: 1.15;
+      color: #eee;
+    }
+    .chip .tones {
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      color: rgba(255, 255, 255, 0.32);
+    }
+    .chip .add {
+      position: absolute;
+      top: 1px;
+      right: 3px;
+      border: none;
+      background: none;
+      color: var(--accent);
+      opacity: 0.4;
+      font-family: inherit;
+      font-size: 1.05rem;
+      line-height: 1;
+      padding: 0.15em 0.35em;
+      cursor: pointer;
+    }
+    .chip .add:hover { opacity: 1; }
+
+    /* --- selected chord --- */
+    /* the selected chord — sticks to the top so it stays in view while you
+       scroll the palette */
+    .detail {
+      position: sticky;
+      top: 0;
+      z-index: 15;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem 1.8rem;
+      padding: 0.5rem 0 0.7rem;
+      background: #000;
+      border-bottom: 1px solid var(--line);
+    }
+    .detail-text { text-align: center; width: 17rem; }
+    .chord-name {
+      font-size: 2.3rem;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      color: var(--accent);
+      line-height: 1.15;
+    }
+    .chord-quality { font-size: 1rem; font-style: italic; color: var(--dim); }
+    .chord-notes { font-size: 1.3rem; letter-spacing: 0.08em; color: #eee; }
+    .chord-role {
+      font-size: 0.9rem;
+      font-style: italic;
+      color: rgba(255, 255, 255, 0.38);
+      min-height: 2.4em;
+      line-height: 1.2;
+    }
+
+    /* mini keyboard */
     .mini-kbd {
       display: flex;
       align-items: flex-start;
-      height: 70px;
-      margin: 0 auto;
+      height: 62px;
+      width: min(400px, 92vw);
     }
     .mini-key { position: relative; box-sizing: border-box; }
     .mini-key.white {
-      flex: 0 0 18px;
+      flex: 1 1 0;
+      min-width: 0;
       height: 100%;
       background: linear-gradient(#fafafa, #e6e6e6);
       border: 1px solid #2a2a2a;
@@ -101,98 +266,23 @@
     .mini-key.white.on { background: linear-gradient(#bfe6ff, #9cd8ff); }
     .mini-key.black.on { background: linear-gradient(#6fb4d6, #2f6f8f); }
     @media (max-width: 600px) {
-      .mini-kbd { height: 56px; }
-      .mini-key.white { flex: 0 0 14px; }
+      .detail { gap: 0.25rem 1rem; padding: 0.35rem 0 0.55rem; }
+      .detail-text { width: min(20rem, 92vw); }
+      .chord-name { font-size: 1.9rem; }
+      .chord-notes { font-size: 1.1rem; }
+      .chord-role {
+        min-height: 0;
+        font-size: 0.85rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .mini-kbd { height: 42px; }
+      .detail-buttons button { font-size: 0.92rem; padding: 0.3em 0.7em; }
+      .group-title { flex-wrap: wrap; }
+      .group-title span { flex-basis: 100%; }
     }
 
-    /* --- controls --- */
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: center;
-      gap: 0.7rem 1.4rem;
-      font-size: 0.95rem;
-      color: rgba(255, 255, 255, 0.6);
-    }
-    .ctl { display: inline-flex; align-items: center; gap: 0.5em; }
-    .ctl select {
-      background: #000;
-      border: 1px solid #666;
-      color: #ddd;
-      font-family: inherit;
-      font-size: 0.95rem;
-      padding: 0.2em 0.35em;
-    }
-    .ctl select:hover { border-color: #9cd8ff; }
-
-    /* --- toggle switch (matches scales/keyboard pages) --- */
-    .switch {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.45em;
-      cursor: pointer;
-      user-select: none;
-    }
-    .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
-    .switch .track {
-      width: 2.4em;
-      height: 1.2em;
-      border: 1px solid #666;
-      border-radius: 1em;
-      position: relative;
-      transition: background 0.15s, border-color 0.15s;
-    }
-    .switch .thumb {
-      position: absolute;
-      top: 50%;
-      left: 0.15em;
-      width: 0.9em;
-      height: 0.9em;
-      transform: translateY(-50%);
-      background: #ddd;
-      border-radius: 50%;
-      transition: left 0.15s, background 0.15s;
-    }
-    .switch input:checked + .track { background: #2f6f8f; border-color: #9cd8ff; }
-    .switch input:checked + .track .thumb { left: calc(100% - 1.05em); background: #9cd8ff; }
-
-    /* --- focus panel ("now showing") --- */
-    .focus {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.6rem;
-      text-align: center;
-    }
-    .chord-name {
-      font-size: 2.6rem;
-      font-weight: 500;
-      letter-spacing: 0.03em;
-      color: #9cd8ff;
-      min-height: 1.1em;
-    }
-    .chord-quality {
-      margin-top: -0.5rem;
-      font-size: 1.05rem;
-      font-style: italic;
-      color: rgba(255, 255, 255, 0.55);
-    }
-    .chord-notes {
-      font-size: 1.6rem;
-      letter-spacing: 0.08em;
-      color: #eee;
-      min-height: 1.2em;
-    }
-
-    .play-controls {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: center;
-      gap: 0.8rem;
-      margin-top: 0.4rem;
-    }
     button {
       background: none;
       border: 1px solid #666;
@@ -201,65 +291,151 @@
       font-size: 1rem;
       padding: 0.4em 0.9em;
       cursor: pointer;
+      border-radius: 3px;
     }
-    button:hover { border-color: #9cd8ff; color: #fff; }
-    button.playing { border-color: #9cd8ff; color: #9cd8ff; background: rgba(156, 216, 255, 0.12); }
-
-    /* --- guitar voicings (chord on the fretboard) --- */
-    .guitar {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.85rem;
-      width: min(420px, 92vw);
-      margin-top: 0.6rem;
-      padding-top: 1.7rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.12);
-    }
-    .guitar-title {
-      font-size: 1.4rem;
-      font-weight: 500;
-      letter-spacing: 0.05em;
-      text-transform: lowercase;
-      color: rgba(255, 255, 255, 0.8);
-    }
-    .guitar-hint {
-      margin: -0.4rem 0 0;
-      font-size: 0.95rem;
-      font-style: italic;
-      color: rgba(255, 255, 255, 0.45);
-      text-align: center;
-    }
-    .voicing-tabs {
+    button:hover { border-color: var(--accent); color: #fff; }
+    button.playing { border-color: var(--accent); color: var(--accent); background: rgba(156, 216, 255, 0.12); }
+    button.primary { border-color: var(--accent); color: var(--accent); }
+    button.primary:hover { background: rgba(156, 216, 255, 0.16); }
+    button:disabled { opacity: 0.35; cursor: default; border-color: #444; }
+    button:disabled:hover { color: #ddd; border-color: #444; background: none; }
+    .detail-buttons {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 0.45rem;
+      gap: 0.6rem;
     }
+
+    /* --- guitar (collapsed by default) --- */
+    .guitar { width: min(900px, 96vw); }
+    .guitar summary {
+      cursor: pointer;
+      font-size: 1rem;
+      letter-spacing: 0.1em;
+      text-transform: lowercase;
+      color: rgba(255, 255, 255, 0.5);
+      list-style: none;
+      text-align: center;
+    }
+    .guitar summary::-webkit-details-marker { display: none; }
+    .guitar summary::before { content: '▸ '; }
+    .guitar[open] summary::before { content: '▾ '; }
+    .guitar-body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.7rem;
+      padding-top: 0.9rem;
+    }
+    .voicing-tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem; }
     .voicing-tab {
       border: 1px solid #666;
       color: #bbb;
       background: none;
       font-family: inherit;
       font-size: 0.9rem;
-      padding: 0.25em 0.7em;
+      padding: 0.2em 0.7em;
       border-radius: 2px;
       cursor: pointer;
-      transition: color 0.15s, border-color 0.15s, background 0.15s;
     }
-    .voicing-tab:hover { border-color: #9cd8ff; color: #fff; }
-    .voicing-tab.active {
-      border-color: #9cd8ff;
-      color: #06121c;
-      background: #9cd8ff;
-    }
+    .voicing-tab:hover { border-color: var(--accent); color: #fff; }
+    .voicing-tab.active { border-color: var(--accent); color: #06121c; background: var(--accent); }
     .fretboard { width: 132px; height: auto; }
     .guitar-caption {
-      font-size: 1.05rem;
+      font-size: 1rem;
       letter-spacing: 0.22em;
       color: #ddd;
       font-variant-numeric: tabular-nums;
       min-height: 1.2em;
+    }
+
+    /* --- progression (pinned to the bottom of the page) --- */
+    .progression {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.7rem 1rem 0.9rem;
+      background: #000;
+      border-top: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.55rem;
+      z-index: 20;
+    }
+    .prog-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem 1rem;
+      font-size: 0.95rem;
+      color: var(--dim);
+    }
+    .prog-title { letter-spacing: 0.12em; text-transform: lowercase; }
+    .prog-cards {
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      gap: 0.4rem;
+      width: min(900px, 96vw);
+      justify-content: flex-start;
+      padding-bottom: 0.2rem;
+      min-height: 3.4rem;
+      scrollbar-width: thin;
+    }
+    .prog-empty {
+      font-style: italic;
+      color: rgba(255, 255, 255, 0.35);
+      font-size: 0.95rem;
+      align-self: center;
+      margin: 0 auto;
+    }
+    .prog-card {
+      position: relative;
+      flex: 0 0 auto;
+      min-width: 4.4rem;
+      padding: 0.25rem 0.5rem 0.3rem;
+      border: 1px solid #3d3d3d;
+      border-radius: 4px;
+      background: #0c0c0c;
+      text-align: center;
+      cursor: pointer;
+    }
+    .prog-card:hover { border-color: var(--accent); }
+    .prog-card.sounding { border-color: var(--accent); background: rgba(156, 216, 255, 0.25); }
+    .prog-card .rn { font-size: 0.72rem; color: rgba(255, 255, 255, 0.45); }
+    .prog-card .sym { font-size: 1.1rem; color: #eee; line-height: 1.15; }
+    .prog-card .card-tools {
+      display: flex;
+      justify-content: center;
+      gap: 0.1rem;
+      margin-top: 0.1rem;
+    }
+    .prog-card .card-tools button {
+      border: none;
+      background: none;
+      color: rgba(255, 255, 255, 0.4);
+      font-family: inherit;
+      font-size: 0.8rem;
+      line-height: 1;
+      padding: 0.1em 0.25em;
+      cursor: pointer;
+    }
+    .prog-card .card-tools button:hover { color: var(--accent); }
+    .prog-roman {
+      font-size: 0.95rem;
+      letter-spacing: 0.08em;
+      color: rgba(255, 255, 255, 0.45);
+      text-align: center;
+      min-height: 1.2em;
+    }
+    @media (max-width: 600px) {
+      body { padding-bottom: 13rem; }
+      .prog-cards { justify-content: flex-start; }
     }
   </style>
 </head>
@@ -267,49 +443,81 @@
   <a class="back" href="index.html">← back</a>
 
   <h1>chords</h1>
-  <p class="hint">pick a root on the circle of fifths, choose a chord quality, then hear and read it</p>
+  <p class="hint">pick a tonal centre, then build a progression from its palette — major and minor are
+    always on the table, and the switches open up sevenths, borrowed chords, diminished shapes and more</p>
 
-  <svg id="circle" viewBox="0 0 360 360" aria-label="circle of fifths root picker"></svg>
+  <section class="key-picker">
+    <svg id="circle" viewBox="0 0 360 360" aria-label="circle of fifths — tonal centre"></svg>
+    <div class="key-name" id="key-name">&nbsp;</div>
+  </section>
 
-  <div class="mini-kbd" id="mini-kbd" aria-label="chord on the keyboard"></div>
-
-  <div class="controls">
-    <label class="ctl">
-      chord
-      <select id="quality"></select>
-    </label>
-    <label class="ctl">
-      tone
-      <select id="tone">
-        <option value="piano" selected>piano</option>
-        <option value="cello">cello</option>
-      </select>
-    </label>
-  </div>
-
-  <div class="focus">
-    <div class="chord-name" id="chord-name">&nbsp;</div>
-    <div class="chord-quality" id="chord-quality">&nbsp;</div>
-    <div class="chord-notes" id="chord-notes">&nbsp;</div>
-    <div class="play-controls">
-      <label class="switch">
-        <input id="invert" type="checkbox">
-        <span class="track"><span class="thumb"></span></span>
-        first inversion
-      </label>
-      <button id="play-block" type="button">play chord</button>
-      <button id="play-arp" type="button">arpeggiate</button>
+  <section class="controls">
+    <div class="control-row" role="radiogroup" aria-label="chord size">
+      <span class="control-label">chords as</span>
+      <div class="pills" id="size-pills"></div>
     </div>
-  </div>
+    <div class="control-row">
+      <span class="control-label">also show</span>
+      <div class="pills" id="group-pills"></div>
+    </div>
+    <div class="control-row">
+      <label class="ctl">
+        tone
+        <select id="tone">
+          <option value="piano" selected>piano</option>
+          <option value="cello">cello</option>
+        </select>
+      </label>
+      <label class="ctl">
+        pace
+        <select id="pace">
+          <option value="1800">slow</option>
+          <option value="1300" selected>steady</option>
+          <option value="900">brisk</option>
+        </select>
+      </label>
+    </div>
+  </section>
 
-  <div class="guitar">
-    <div class="guitar-title">on the guitar</div>
-    <p class="guitar-hint">the same chord fretted in standard tuning — pick a position to see another shape</p>
-    <div class="voicing-tabs" id="voicing-tabs" role="tablist" aria-label="guitar voicings"></div>
-    <svg id="fretboard" class="fretboard" viewBox="0 0 116 142" aria-label="chord on the guitar"></svg>
-    <div class="guitar-caption" id="guitar-caption">&nbsp;</div>
-    <button id="strum" type="button">strum</button>
-  </div>
+  <section class="detail">
+    <div class="detail-text">
+      <div class="chord-name" id="chord-name">&nbsp;</div>
+      <div class="chord-quality" id="chord-quality">&nbsp;</div>
+      <div class="chord-notes" id="chord-notes">&nbsp;</div>
+      <div class="chord-role" id="chord-role">&nbsp;</div>
+    </div>
+    <div class="mini-kbd" id="mini-kbd" aria-label="the selected chord on the keyboard"></div>
+    <div class="detail-buttons">
+      <button id="play-block" type="button">play</button>
+      <button id="play-arp" type="button">arpeggiate</button>
+      <button id="add-chord" class="primary" type="button">add chord to progression</button>
+    </div>
+  </section>
+
+  <section class="palette" id="palette"></section>
+
+  <details class="guitar">
+    <summary>on the guitar</summary>
+    <div class="guitar-body">
+      <div class="voicing-tabs" id="voicing-tabs" role="tablist" aria-label="guitar voicings"></div>
+      <svg id="fretboard" class="fretboard" viewBox="0 0 116 142" aria-label="the selected chord on the guitar"></svg>
+      <div class="guitar-caption" id="guitar-caption">&nbsp;</div>
+      <button id="strum" type="button">strum</button>
+    </div>
+  </details>
+
+  <section class="progression" aria-label="progression">
+    <div class="prog-head">
+      <span class="prog-title">progression</span>
+      <button id="prog-play" type="button">play</button>
+      <label class="pill" id="loop-pill">
+        <input id="prog-loop" type="checkbox"> loop
+      </label>
+      <button id="prog-clear" type="button">clear</button>
+    </div>
+    <div class="prog-cards" id="prog-cards"></div>
+    <div class="prog-roman" id="prog-roman">&nbsp;</div>
+  </section>
 
   <script src="audio.js"></script>
   <script src="chords.js"></script>
