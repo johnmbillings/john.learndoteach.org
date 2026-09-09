@@ -128,7 +128,8 @@
         { "start": "1:57",   "end": "3:23.6", "label": "mm 14-23" },
         { "start": "3:23.6", "end": "3:38.3", "label": "L’Oiseau de feu et sa danse (mm 24-38)" },
         { "start": "3:38.3", "end": "4:57.5", "label": "Variation de l’Oiseau de feu (mm 39-81)" },
-        { "start": "4:57.5", "end": "10:00",  "label": "Ronde des princesses (mm 82)" },
+        { "start": "4:57.5", "end": "5:57",   "label": "Ronde des princesses (mm 82)" },
+        { "start": "5:57",   "end": "10:00",  "label": "Ronde des princesses, m 17 onward" },
         { "start": "10:00",  "end": "14:40",  "label": "Danse infernale du roi Kastcheï" },
         { "start": "14:40",  "end": "18:05",  "label": "Berceuse" },
         { "start": "18:05",  "end": "21:20",  "label": "Finale" }
