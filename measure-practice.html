@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>measure practice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      color: #fff;
+      font-family: "Cormorant Garamond", serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      padding: 2.5rem 1rem 4rem;
+      box-sizing: border-box;
+    }
+    a { color: #9cd8ff; }
+    .back {
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      font-size: 1rem;
+      color: #666;
+      text-decoration: none;
+    }
+    .back:hover { color: #d8d8ff; }
+
+    h1 {
+      margin: 0;
+      font-size: 2.2rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: lowercase;
+    }
+    .hint {
+      margin: -0.5rem 0 0;
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.5);
+      font-style: italic;
+      text-align: center;
+      max-width: 34rem;
+    }
+
+    /* The engraved measures, on paper. Same light panel the song page uses for
+       its scores — LilyPond draws in black, so it needs a light ground. */
+    #score-wrapper {
+      width: min(38rem, 100%);
+      padding: 1rem 0.9rem;
+      background: #fafafa;
+      border-radius: 4px;
+    }
+    #score-wrapper img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* --- the note strip: one chip per note, lit as it sounds --- */
+    #strip {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 0.9rem 1.4rem;
+      width: min(48rem, 100%);
+    }
+    .measure {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .measure-no {
+      font-size: 0.85rem;
+      letter-spacing: 0.12em;
+      color: rgba(255, 255, 255, 0.35);
+    }
+    .measure-notes { display: flex; gap: 0.15rem; }
+    .note {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2.3em;
+      padding: 0.3em 0.4em;
+      font-size: 1.2rem;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #ddd;
+      transition: background 0.1s, color 0.1s, border-color 0.1s;
+    }
+    .note.sounding { background: #9cd8ff; border-color: #9cd8ff; color: #06121c; }
+    /* A rest is a note-length you count, so it keeps a chip of its own —
+       named, because a rest glyph is the one character a phone font may not
+       have, and a blank box would read as a bug. */
+    .note.rest {
+      color: rgba(255, 255, 255, 0.3);
+      border-style: dashed;
+      font-size: 0.85rem;
+      font-style: italic;
+      letter-spacing: 0.08em;
+    }
+    .note.rest.sounding { background: rgba(156, 216, 255, 0.15); color: rgba(255, 255, 255, 0.6); }
+
+    /* Shown only when the page's scripts didn't run — a failed script fetch
+       otherwise looks exactly like a practice tool that quietly does nothing. */
+    #load-error {
+      margin: 0;
+      padding: 0.8rem 1rem;
+      max-width: min(34rem, 100%);
+      border: 1px solid rgba(232, 122, 122, 0.5);
+      color: #e8a0a0;
+      font-size: 1rem;
+      text-align: center;
+      line-height: 1.5;
+    }
+    #load-error a { color: #ffb066; }
+    #load-error .detail {
+      display: block;
+      margin-top: 0.4rem;
+      font-size: 0.8rem;
+      color: rgba(232, 160, 160, 0.7);
+      font-family: ui-monospace, monospace;
+      word-break: break-word;
+    }
+
+    /* --- controls --- */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.7rem 1.4rem;
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.6);
+      max-width: min(38rem, 100%);
+    }
+    .ctl { display: inline-flex; align-items: center; gap: 0.5em; }
+    .ctl input[type="number"] {
+      background: #000;
+      border: 1px solid #666;
+      color: #ddd;
+      font-family: inherit;
+      font-size: 0.95rem;
+      padding: 0.2em 0.35em;
+      width: 3.4em;
+    }
+    .ctl input[type="number"]:hover { border-color: #9cd8ff; }
+
+    button {
+      background: none;
+      border: 1px solid #666;
+      color: #ddd;
+      font-family: inherit;
+      font-size: 1rem;
+      padding: 0.35em 0.7em;
+      cursor: pointer;
+    }
+    button:hover { border-color: #9cd8ff; color: #fff; }
+    #play {
+      font-size: 1.3rem;
+      padding: 0.4em 1.6em;
+      letter-spacing: 0.05em;
+    }
+    #play.playing { border-color: #9cd8ff; color: #9cd8ff; background: rgba(156, 216, 255, 0.12); }
+
+    #span { display: inline-flex; gap: 0.3rem; }
+    #span button.on { border-color: #9cd8ff; color: #9cd8ff; background: rgba(156, 216, 255, 0.12); }
+
+    .switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45em;
+      cursor: pointer;
+      user-select: none;
+    }
+    .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .switch .track {
+      width: 2.4em;
+      height: 1.2em;
+      border: 1px solid #666;
+      border-radius: 1em;
+      position: relative;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .switch .thumb {
+      position: absolute;
+      top: 50%;
+      left: 0.15em;
+      width: 0.9em;
+      height: 0.9em;
+      transform: translateY(-50%);
+      background: #ddd;
+      border-radius: 50%;
+      transition: left 0.15s, background 0.15s;
+    }
+    .switch input:checked + .track { background: #24506b; border-color: #9cd8ff; }
+    .switch input:checked + .track .thumb { left: calc(100% - 1.05em); background: #9cd8ff; }
+
+    .source-note {
+      margin: 0;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.4);
+      text-align: center;
+      max-width: min(34rem, 100%);
+    }
+  </style>
+</head>
+<body>
+  <a class="back" href="index.html">← back</a>
+
+  <h1>measure practice</h1>
+  <p class="hint">
+    a couple of measures at a time, played as printed — the notes and the
+    rhythm, slowly enough to hear what the hand is aiming at.
+  </p>
+
+  <p id="load-error" hidden>
+    this page didn't finish loading — its scripts never ran.
+    <a id="load-error-reload" href="">reload</a> to fetch a fresh copy.
+    <span class="detail" id="load-error-detail"></span>
+  </p>
+
+  <div id="score-wrapper">
+    <img id="score-img" alt="the measures being practised">
+  </div>
+
+  <div id="strip"></div>
+
+  <button id="play" type="button">play</button>
+
+  <div class="controls">
+    <span class="ctl">
+      measures
+      <span id="span"></span>
+    </span>
+    <label class="ctl">
+      <span>♩ =</span>
+      <input id="tempo" type="number" min="20" max="180" step="1" value="60">
+    </label>
+    <label class="switch">
+      <input id="metronome" type="checkbox" checked>
+      <span class="track"><span class="thumb"></span></span>
+      metronome
+    </label>
+    <label class="switch">
+      <input id="count-in" type="checkbox" checked>
+      <span class="track"><span class="thumb"></span></span>
+      count-in
+    </label>
+    <label class="switch">
+      <input id="loop" type="checkbox" checked>
+      <span class="track"><span class="thumb"></span></span>
+      loop
+    </label>
+  </div>
+
+  <p class="source-note" id="source-note"></p>
+
+  <script>
+    // Watch the scripts below. A phone has no console, so a script that fails
+    // to fetch (flaky connection, a stale or negative cache entry) leaves a
+    // page that looks fine and does nothing, with no way to tell why. Listen in
+    // the capture phase — resource load failures don't bubble — and report on
+    // the page if measure-practice.js never reached its last line.
+    window.__measureProblems = [];
+    addEventListener('error', (e) => {
+      const src = e.target && e.target.src;
+      window.__measureProblems.push(src ? 'could not load ' + src.split('/').pop() : (e.message || 'script error'));
+    }, true);
+    addEventListener('load', () => {
+      if (window.__measureReady) return;
+      const box = document.getElementById('load-error');
+      const detail = document.getElementById('load-error-detail');
+      const again = document.getElementById('load-error-reload');
+      // A unique query is the one reload a cache can't answer from its own copy.
+      if (again) again.href = location.pathname + '?r=' + Date.now();
+      if (detail) detail.textContent = window.__measureProblems.join('; ');
+      if (box) box.hidden = false;
+    });
+  </script>
+
+  <!-- Versioned so a cached script can never pair with newer markup. GitHub
+       Pages serves both with the same short max-age, so a reload can pick up
+       fresh HTML while reusing a stale script from cache — which is fatal the
+       moment the two disagree about what controls exist. Bump ?v= whenever
+       either file changes in a way the other depends on. -->
+  <script src="audio.js?v=4"></script>
+  <script src="measure-practice.js?v=1"></script>
+</body>
+</html>

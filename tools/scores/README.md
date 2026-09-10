@@ -1,6 +1,8 @@
 # Score builder
 
-Renders the per-loop SVG scores in `scores/` from LilyPond sources in this directory.
+Renders the SVG scores the site displays — the per-loop scores for the song
+page, and the passage the measure-practice page drills — from the LilyPond
+sources in this directory.
 
 ## Sources
 - `allemande.ly` — Bach Cello Suite No. 1, Allemande (BWV 1007). Forked from
@@ -9,6 +11,22 @@ Renders the per-loop SVG scores in `scores/` from LilyPond sources in this direc
   (Bärenreiter-based), with editorial slurs, bow markings and trills added
   by hand to follow the Peters/Becker edition. Written in **absolute octaves**
   (not `\relative`) so each measure is self-contained.
+- `measure-practice.ly` — mm 65–66 of the cello part John is working from: the
+  two `normale` measures between the col legno bars at 63–64 and the col legno
+  that resumes at 67. **Transcribed by eye from a photograph of the printed
+  part** (tenor clef, no key signature, plate 22392) rather than from an
+  edition on IMSLP, so it is a first pass to be checked against the part, not a
+  citable source. The measure numbers are the boxed ones printed in that part.
+  Absolute octaves, one measure per line, like the allemande.
+
+  The printed part shows no time signature at that point (it is set earlier in
+  the movement, past the edge of the photograph), so the builder removes the
+  `Time_signature_engraver` and the 3/4 in the source only places the bar
+  lines: six eighths a measure, beamed as printed (six in m 65; four, then a
+  flagged note and a rest, in m 66). Beams are manual for that reason.
+
+  Its pitches are duplicated as a playback table in `measure-practice.js` —
+  **edit the two together**, or the page will play something it isn't showing.
 
 ## Build
 Requires LilyPond on `$PATH`. Run `tools/scores/setup.sh` to install it if
@@ -22,10 +40,17 @@ From the repo root:
 python3 tools/scores/build_scores.py
 ```
 
-The script reads each loop in `songs.json`, parses the measure range out of
-its `label` (e.g. `"mm 4-6"`), extracts those measures from the matching
-LilyPond source, and writes the cropped SVG to the path in the loop's
-`score` field.
+For the song page, the script reads each loop in `songs.json`, parses the
+measure range out of its `label` (e.g. `"mm 4-6"`), extracts those measures
+from the matching LilyPond source, and writes the cropped SVG to the path in
+the loop's `score` field.
+
+For the measure-practice page it renders `measure-practice.ly` twice over: the
+whole passage into `scores/measure-practice/mm-65-66.svg`, and each measure on
+its own into `mm-65.svg`, `mm-66.svg` — the page shows one or the other
+depending on which measures are selected. The bar number the source starts on
+lives in `PRACTICE_FIRST_BAR` in the script, since a single-measure slice would
+lose a `\set` written inside the music.
 
 The source is in **absolute octaves**, so every measure renders on its own —
 ranges that don't start at m. 1 simply set `Score.currentBarNumber`, with no
