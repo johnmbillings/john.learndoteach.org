@@ -34,6 +34,25 @@ shifts the octave of later notes — the bug class that plagued the relative
 source. Record the edition/source in `tools/scores/README.md`. Keep **one
 measure per line** (see the hard constraint below).
 
+## Getting the notes (a photograph of a part)
+When there's no edition to transcribe from — just a photo of the part on the
+stand — run `tools/read_part.py` rather than reading pitches by eye off the
+image. A phone photo is tilted, curved and soft, and eyeballing a notehead
+against a staff line is worth about half a step, which is a wrong note. The
+script rectifies the page and measures each head against the staff lines in its
+own columns:
+
+```
+python3 tools/read_part.py part.jpg                        # which systems?
+python3 tools/read_part.py part.jpg --system 0 --clef tenor --out /tmp/read
+```
+
+It reports staff positions and flags the doubtful ones, and writes a crop per
+note with a pitch ruler drawn on. Read the accidentals, articulations and the
+clef off those crops — and check the clef before trusting any name it prints
+(a C-clef on the 4th line is tenor, on the 3rd alto, and the difference is a
+third on every note).
+
 ## Adding notations (fingerings, slurs, dynamics, …)
 Done a few measures at a time from screen captures of the edition being marked:
 

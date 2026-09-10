@@ -66,6 +66,19 @@ A setting on its own line counts as an extra "measure" and shifts every later
 index, corrupting all the SVGs. After a build, `git status` should show only the
 SVG(s) you meant to change — if others changed, a measure boundary shifted.
 
+## Reading notes off a photograph
+`tools/read_part.py` measures staff positions in a phone photo of a printed
+part — it rectifies the page's tilt and curl, then reads each notehead against
+the staff lines in its own columns and flags the ones worth a second look. It
+does not read accidentals or articulations; those come off the crops it writes.
+
+```
+python3 tools/read_part.py part.jpg                       # list the systems
+python3 tools/read_part.py part.jpg --system 0 --clef tenor --out /tmp/read
+```
+
+This is where `measure-practice.ly` came from. Needs numpy and pillow.
+
 ## Adding notes or notations
 See the `score-workflow` skill (`.claude/skills/score-workflow/`) for the full
 process: transcribing notes from IMSLP, then adding fingerings/articulations/
