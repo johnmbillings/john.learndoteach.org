@@ -48,6 +48,33 @@
       max-width: 34rem;
     }
 
+    /* --- which movement --- */
+    .movement-pick {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35rem;
+      width: min(38rem, 100%);
+      margin-bottom: -0.6rem;
+    }
+    #movement {
+      background: #000;
+      border: 1px solid #666;
+      color: #ddd;
+      font-family: inherit;
+      font-size: 1.15rem;
+      padding: 0.3em 0.5em;
+      max-width: 100%;
+    }
+    #movement:hover { border-color: #9cd8ff; }
+    #movement-state {
+      margin: 0;
+      font-size: 0.9rem;
+      font-style: italic;
+      color: rgba(255, 255, 255, 0.4);
+      text-align: center;
+    }
+
     /* The engraved measures, on paper. Same light panel the song page uses for
        its scores — LilyPond draws in black, so it needs a light ground. */
     #score-wrapper {
@@ -188,6 +215,12 @@
       padding: 0.2em 0.3em;
     }
     .ctl select:hover { border-color: #9cd8ff; }
+    .ctl select:disabled, button:disabled {
+      opacity: 0.35;
+      cursor: default;
+      border-color: #444;
+    }
+    button:disabled:hover { border-color: #444; color: #ddd; }
     .ctl .dash { color: rgba(255, 255, 255, 0.35); }
     #whole { font-size: 0.9rem; padding: 0.25em 0.55em; }
     #whole.on { border-color: #9cd8ff; color: #9cd8ff; background: rgba(156, 216, 255, 0.12); }
@@ -237,8 +270,8 @@
 
   <h1>measure practice</h1>
   <p class="hint">
-    pick a measure or a handful, and hear them played as printed — the notes
-    and the rhythm, slowly enough to hear what the hand is aiming at.
+    pick a movement and a measure or two, and hear them played as printed —
+    the notes and the rhythm, slowly enough to hear what the hand is aiming at.
   </p>
 
   <p id="load-error" hidden>
@@ -246,6 +279,11 @@
     <a id="load-error-reload" href="">reload</a> to fetch a fresh copy.
     <span class="detail" id="load-error-detail"></span>
   </p>
+
+  <div class="movement-pick">
+    <select id="movement" aria-label="movement"></select>
+    <p id="movement-state"></p>
+  </div>
 
   <div id="score-wrapper">
     <img id="score-img" alt="the measures being practised">
@@ -316,6 +354,6 @@
        moment the two disagree about what controls exist. Bump ?v= whenever
        either file changes in a way the other depends on. -->
   <script src="audio.js?v=4"></script>
-  <script src="measure-practice.js?v=3"></script>
+  <script src="measure-practice.js?v=4"></script>
 </body>
 </html>

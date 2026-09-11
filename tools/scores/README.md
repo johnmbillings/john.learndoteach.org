@@ -11,21 +11,32 @@ sources in this directory.
   (Bärenreiter-based), with editorial slurs, bow markings and trills added
   by hand to follow the Peters/Becker edition. Written in **absolute octaves**
   (not `\relative`) so each measure is self-contained.
-- `measure-practice.ly` — Stravinsky, *L'Oiseau de feu* (1919 suite), **Danse
-  infernale du roi Kastcheï**, cello part, mm 63–68: one system of the printed
-  part and one phrase — col legno on a hammered G♯ (63–64), the same G♯
-  answered normale and marcatissimo (65–66), col legno again (67–68). Edition:
-  Nieweg / McAlister, plate 22392 — the part John plays from, read from the
-  part itself. Absolute octaves, one measure per line, like the allemande.
+- `measure-practice.ly` — passages from Stravinsky, *L'Oiseau de feu* (1919
+  suite), cello part, Nieweg / McAlister edition (plate 22392), read from the
+  part itself. **One `\absolute` block per movement**, each carrying its own
+  clef and meter on setup lines before the music; absolute octaves and one
+  measure per line, like the allemande.
 
-  3/4 at ♩ = 168, set at the movement's head and unchanged here. Nearly every
-  beat is the same limping cell — an eighth and two sixteenths — which is why
-  the two normale bars of straight eighths land the way they do. The part
-  doesn't reprint the time signature anywhere in the system, so the builder
-  removes the `Time_signature_engraver`. Beams are manual throughout: neither
-  the ♪♬ cell nor m 65's six-eighth beam is what 3/4 would do by itself.
+  Transcribed so far:
 
-  Its notes are duplicated as a playback table in `measure-practice.js` —
+  | block | movement | measures |
+  |---|---|---|
+  | `danseInfernale` | Danse infernale du roi Kastcheï | 63–68 |
+
+  The Danse infernale is 3/4 at ♩ = 168, set at the movement's head and
+  unchanged through these bars. Nearly every beat is the same limping cell — an
+  eighth and two sixteenths — which is why mm 65–66, straight eighths, land the
+  way they do. The part doesn't reprint the time signature in this system, so
+  the builder removes the `Time_signature_engraver`; beams are manual, since
+  neither the ♪♬ cell nor m 65's six-eighth beam is what 3/4 would do by itself.
+
+  **Adding a movement** is a block here plus a row in `PRACTICE_MOVEMENTS` in
+  the builder (LilyPond variable, movement id, first bar number), plus its
+  measures in the `MOVEMENTS` table in `measure-practice.js`. The page works the
+  SVG's name out from the movement id and the bar range, so no third list has to
+  agree.
+
+  The notes are duplicated between the `.ly` and `measure-practice.js` —
   **edit the two together**, or the page will play something it isn't showing.
   That file checks each measure adds up to a bar and says so on the page if one
   doesn't, which catches the likelier half of that mistake.

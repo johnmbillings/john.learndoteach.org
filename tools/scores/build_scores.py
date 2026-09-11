@@ -6,8 +6,8 @@ Two jobs, one script:
   * the per-loop scores for songs.json — for each loop with a `label` like
     "mm 4-6" and a `score` path, extracts those measures from `allemande.ly`
     and renders a cropped SVG into the path the JSON points at;
-  * the measure-practice passage — renders `measure-practice.ly` whole and one
-    measure at a time into `scores/measure-practice/`, which
+  * the measure-practice passages — renders each transcribed movement of
+    `measure-practice.ly` into `scores/measure-practice/`, which
     measure-practice.html displays.
 
 Requires: lilypond on PATH.
@@ -22,10 +22,14 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
 SRC_LY = HERE / 'allemande.ly'
 PRACTICE_LY = HERE / 'measure-practice.ly'
-# The bar number the measure-practice source starts on. It lives here rather
-# than in the .ly because a single-measure slice would lose a \set inside the
-# music, and the page labels its measures from the file names this produces.
-PRACTICE_FIRST_BAR = 63
+# The movements of measure-practice.ly that have music: the LilyPond variable
+# holding them, the movement id measure-practice.js uses, and the bar number the
+# block starts on (the music itself carries no \set for it). A new movement is
+# a new block in the .ly and a new row here; the page works the SVG's name out
+# from the id and the bars, so the two stay in step without a third list.
+PRACTICE_MOVEMENTS = [
+    ('danseInfernale', 'danse-infernale', 63),
+]
 
 src = SRC_LY.read_text()
 m = re.search(r'\\repeat\s+volta\s+2\s*\{(.+?)\n\s*\}', src, re.DOTALL)
@@ -94,30 +98,32 @@ def make_ly(start, end):
 '''
 
 
-def practice_measures():
-    """The measure lines of measure-practice.ly, one per element.
+def practice_block(variable):
+    """One movement's block from measure-practice.ly, as (setup, measures).
 
     Setup lines (\\clef, \\time, \\set …) carry no bar check, so the bar-check
     line ending is what marks a line as a measure — the same one-measure-per-line
-    discipline the allemande source keeps.
+    discipline the allemande source keeps. The setup travels with its movement
+    because the movements share neither clef nor meter.
     """
-    body = re.search(r'measurePractice\s*=\s*\\absolute\s*\{(.+?)\n\}',
+    body = re.search(variable + r'\s*=\s*\\absolute\s*\{(.+?)\n\}',
                      PRACTICE_LY.read_text(), re.DOTALL)
     if not body:
-        sys.exit(f'measurePractice block not found in {PRACTICE_LY}')
-    return [l.strip() for l in body.group(1).splitlines() if l.strip().endswith('|')]
+        sys.exit(f'{variable} block not found in {PRACTICE_LY}')
+    lines = [l.strip() for l in body.group(1).splitlines() if l.strip()]
+    return ([l for l in lines if not l.endswith('|')],
+            [l for l in lines if l.endswith('|')])
 
 
-def make_practice_ly(bars, first_bar):
-    """A snippet showing `bars` (measure lines), numbered from `first_bar`.
+def make_practice_ly(setup, bars, first_bar):
+    """A snippet of `bars`, numbered from `first_bar`, under its own `setup`.
 
-    No time signature is printed: the part sets it earlier in the movement and
-    the photograph this was transcribed from doesn't reach back far enough to
-    read it, so the 3/4 in the source only places the bar lines. Bar numbers
+    No time signature is printed: the part sets it at the movement's head and
+    doesn't reprint it where nothing changes, so neither does this. Bar numbers
     are forced visible on every measure — the numbers are the whole point of a
     page you drill measure by measure.
     """
-    visible = '\n'.join('    ' + b for b in bars)
+    body = '\n'.join('    ' + line for line in list(setup) + list(bars))
     return f'''\\version "2.24.0"
 \\paper {{
   indent = 0
@@ -128,13 +134,10 @@ def make_practice_ly(bars, first_bar):
 \\header {{ tagline = "" }}
 \\score {{
   \\new Staff \\with {{ \\remove "Time_signature_engraver" }} {{
-    \\clef "tenor"
-    \\time 3/4
-    \\autoBeamOff
     \\set Score.currentBarNumber = #{first_bar}
     \\set Score.barNumberVisibility = #all-bar-numbers-visible
     \\override Score.BarNumber.break-visibility = #'#(#t #t #t)
-{visible}
+{body}
   }}
   \\layout {{
     \\override Hairpin.shorten-pair = #'(-1 . -1)
@@ -154,16 +157,21 @@ def build_allemande(tmp):
 
 
 def build_measure_practice(tmp):
-    bars = practice_measures()
-    first, last = PRACTICE_FIRST_BAR, PRACTICE_FIRST_BAR + len(bars) - 1
+    """One engraving per transcribed movement, named for the page to find."""
     out = REPO / 'scores' / 'measure-practice'
-    # One engraving of the whole passage, with every bar numbered. The page
-    # picks a range out of it rather than showing a different picture per
-    # range: a per-range SVG would mean one file per pair of measures, and the
-    # printed bar numbers already say where your range sits on the line.
-    render(make_practice_ly(bars, first), out / f'mm-{first}-{last}.svg', tmp)
-    for stale in out.glob('*.svg'):
-        if stale.name != f'mm-{first}-{last}.svg':
+    wanted = set()
+    for variable, movement_id, first_bar in PRACTICE_MOVEMENTS:
+        setup, bars = practice_block(variable)
+        last_bar = first_bar + len(bars) - 1
+        name = f'{movement_id}-mm-{first_bar}-{last_bar}.svg'
+        wanted.add(name)
+        # The whole movement's transcribed measures in one line of music, with
+        # every bar numbered: the page picks a range out of it rather than
+        # showing a different picture per range, which would mean a file per
+        # pair of measures.
+        render(make_practice_ly(setup, bars, first_bar), out / name, tmp)
+    for stale in sorted(out.glob('*.svg')):
+        if stale.name not in wanted:
             stale.unlink()
             print(f'  -- removed {stale.relative_to(REPO)} (no longer built)')
 

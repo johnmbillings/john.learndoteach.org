@@ -1,23 +1,27 @@
-// Measure practice. A passage played back exactly as printed — the notes and
-// the rhythm — with a measure range you pick, so a bar that won't come can be
-// drilled on its own and then put back into its phrase.
+// Measure practice. A part, movement by movement: pick a movement, pick a
+// range of its measures, and hear them played as printed — the notes and the
+// rhythm — so a bar that won't come can be drilled on its own and then put
+// back into its phrase.
 //
-// The passage is Stravinsky's Danse infernale du roi Kastcheï (L'Oiseau de feu,
-// 1919 suite), cello part, mm 63–68: one system of the printed part and one
-// phrase. Col legno on a hammered G♯ (63–64), the same G♯ answered normale and
-// marcatissimo (65–66), col legno again (67–68). Tenor clef, 3/4 at ♩ = 168.
+// The piece is Stravinsky's L'Oiseau de feu (1919 suite), cello part, from the
+// Nieweg / McAlister edition (plate 22392). All seven movements are listed,
+// because a dropdown that hides the ones with nothing in them would also hide
+// how much of the part is still untranscribed. A movement with no measures
+// says so and sits out.
 //
-// Nearly every beat is the same limping cell — an eighth and two sixteenths —
-// which is why the two normale bars, six straight eighths, land the way they
-// do. Read off the part (Nieweg / McAlister, plate 22392) and checked against
-// it note for note.
+// The part numbers its bars in three runs, which is why a movement carries its
+// own numbers rather than a global count: the Introduction numbers from 1 and
+// the next two movements continue it (to m 81), the Ronde des princesses
+// starts again at 1, as does the Danse infernale, and the Berceuse starts again
+// at 1 with the Final continuing it from m 47.
 //
 // TWO SOURCES, ONE PASSAGE: the engraving comes from
 // tools/scores/measure-practice.ly (built to scores/measure-practice/ by
-// tools/scores/build_scores.py) and the playback from the PASSAGE table below.
-// They describe the same music and have to be edited together — a note changed
-// in one and not the other means the page plays something it isn't showing.
-// checkPassage() below catches the easiest way to get that wrong.
+// tools/scores/build_scores.py, one SVG per transcribed movement) and the
+// playback from the MOVEMENTS table below. They describe the same music and
+// have to be edited together — a note changed in one and not the other means
+// the page plays something it isn't showing. checkPassage() catches the
+// easiest way to get that wrong.
 //
 // Audio helpers (pitchToMidi, the cello voice, the shared clock) live in audio.js.
 
@@ -29,43 +33,80 @@ const cello = AudioKit.instruments.cello;
 const eighth = (pitch) => ({ pitch, units: 2 });
 const sixteenth = (pitch) => ({ pitch, units: 1 });
 const eighthRest = () => ({ pitch: null, units: 2 });
-// One beat of the col legno figure: an eighth and two sixteenths, all on the
-// same note. Written once because the part writes it fourteen times.
+// One beat of the Danse infernale's col legno figure: an eighth and two
+// sixteenths, all on the same note. Written once because the part writes it
+// fourteen times in six bars.
 const cell = (pitch) => [eighth(pitch), sixteenth(pitch), sixteenth(pitch)];
 
 const G = 'G#4';   // the col legno note: G♯ on the first ledger line, all four bars
 
-const PASSAGE = {
-  score: 'scores/measure-practice/mm-63-68.svg',
-  unitsPerBeat: 4,      // a quarter is the printed beat; the unit is a sixteenth
-  beatsPerMeasure: 3,   // 3/4
-  targetBpm: 168,       // the movement's printed tempo — what "up to speed" means
-  measures: [
-    // The rest stands in for the cell's own eighth, so the bar still limps.
-    { n: 63, notes: [eighthRest(), sixteenth(G), sixteenth(G), ...cell(G), ...cell(G)] },
-    { n: 64, notes: [...cell(G), ...cell(G), eighth(G), eighthRest()] },
-    { n: 65, notes: ['F4', 'G#4', 'C5', 'B4', 'G#4', 'B4'].map(eighth) },
-    { n: 66, notes: [...['D#5', 'D5', 'G#4', 'F4', 'B4'].map(eighth), eighthRest()] },
-    { n: 67, notes: [...cell(G), ...cell(G), ...cell(G)] },
-    { n: 68, notes: [...cell(G), ...cell(G), eighth(G), eighthRest()] },
-  ],
-};
+// The movements of the suite, in playing order. `measures` is what has been
+// transcribed and checked against the part so far; the rest are listed for
+// their names and their printed tempo until someone does the reading.
+//
+// A movement that carries music also carries how to count it: `unitsPerBeat`
+// (sixteenths to a printed beat) and `beatsPerMeasure`, which drive the
+// metronome, the count-in and the bar check.
+const MOVEMENTS = [
+  { id: 'introduction', name: 'Introduction', tempo: '♪ = 108' },
+  { id: 'oiseau-et-sa-danse', name: 'L’Oiseau de feu et sa danse', tempo: '♩ = 152' },
+  { id: 'variation', name: 'Variation de l’Oiseau de feu', tempo: '♩. = 76' },
+  { id: 'ronde-des-princesses', name: 'Ronde des princesses', tempo: '♩ = 72' },
+  {
+    id: 'danse-infernale',
+    name: 'Danse infernale du roi Kastcheï',
+    tempo: '♩ = 168',
+    targetBpm: 168,
+    meter: '3/4',
+    clef: 'tenor',
+    unitsPerBeat: 4,      // a quarter is the printed beat; the unit is a sixteenth
+    beatsPerMeasure: 3,
+    // mm 63–68: one system of the part and one phrase — col legno on a hammered
+    // G♯, the same G♯ answered normale and marcatissimo, then col legno again.
+    // Nearly every beat is the same limping cell, which is what makes the two
+    // normale bars of straight eighths land the way they do.
+    measures: [
+      // In m 63 the rest stands in for the cell's own eighth, so the bar still limps.
+      { n: 63, notes: [eighthRest(), sixteenth(G), sixteenth(G), ...cell(G), ...cell(G)] },
+      { n: 64, notes: [...cell(G), ...cell(G), eighth(G), eighthRest()] },
+      { n: 65, notes: ['F4', 'G#4', 'C5', 'B4', 'G#4', 'B4'].map(eighth) },
+      { n: 66, notes: [...['D#5', 'D5', 'G#4', 'F4', 'B4'].map(eighth), eighthRest()] },
+      { n: 67, notes: [...cell(G), ...cell(G), ...cell(G)] },
+      { n: 68, notes: [...cell(G), ...cell(G), eighth(G), eighthRest()] },
+    ],
+  },
+  { id: 'berceuse', name: 'Berceuse', tempo: '♩ = 60' },
+  { id: 'final', name: 'Final', tempo: '𝅗𝅥 = 54' },
+];
 
-const PREFS_KEY = 'measure-practice:v2';
+const PREFS_KEY = 'measure-practice:v3';
 
 let tempoBpm = 60;          // ♩ = , so a sixteenth is 15/tempo seconds
 let metronomeOn = true;
 let countIn = true;
 let loopOn = true;
-// The selected range: indices into PASSAGE.measures, inclusive.
+// What is selected: a movement, and a range of its measures (indices, inclusive).
+let movementIdx = MOVEMENTS.findIndex(m => (m.measures || []).length);
 let fromIdx = 0;
-let toIdx = PASSAGE.measures.length - 1;
+let toIdx = 0;
 
 let playing = false;
 let loopTimerId = null;
 let passTimers = [];        // pending rest highlights, cleared when playback stops
 
 // --- the passage ------------------------------------------------------------
+
+function movement() {
+  return MOVEMENTS[movementIdx] || MOVEMENTS[0];
+}
+
+function measures() {
+  return movement().measures || [];
+}
+
+function playable(m) {
+  return (m.measures || []).length > 0;
+}
 
 function measureUnits(measure) {
   return measure.notes.reduce((total, note) => total + note.units, 0);
@@ -76,10 +117,15 @@ function measureUnits(measure) {
 // and it is silent otherwise: playback would simply run short and the loop
 // would drift against the metronome.
 function checkPassage() {
-  const want = PASSAGE.unitsPerBeat * PASSAGE.beatsPerMeasure;
-  return PASSAGE.measures
-    .filter(m => measureUnits(m) !== want)
-    .map(m => `m ${m.n} holds ${measureUnits(m)} sixteenths, not ${want}`);
+  const problems = [];
+  MOVEMENTS.filter(playable).forEach(m => {
+    const want = m.unitsPerBeat * m.beatsPerMeasure;
+    m.measures.forEach(measure => {
+      const got = measureUnits(measure);
+      if (got !== want) problems.push(`${m.name} m ${measure.n}: ${got} sixteenths, not ${want}`);
+    });
+  });
+  return problems;
 }
 
 // The selected measures as one flat list: { pitch, units, at } with `at` the
@@ -88,7 +134,7 @@ function checkPassage() {
 function selectedEvents() {
   const out = [];
   let at = 0;
-  PASSAGE.measures.slice(fromIdx, toIdx + 1).forEach(measure => {
+  measures().slice(fromIdx, toIdx + 1).forEach(measure => {
     measure.notes.forEach(note => {
       out.push({ ...note, at });
       at += note.units;
@@ -122,13 +168,26 @@ function displayName(pitch) {
 
 // --- the score and the strip ------------------------------------------------
 
+// The builder names each movement's engraving after the movement and the bars
+// it covers, so the page can work the path out rather than store it twice.
+function scoreSrc() {
+  const list = measures();
+  if (!list.length) return null;
+  const first = list[0].n;
+  const last = list[list.length - 1].n;
+  return `scores/measure-practice/${movement().id}-mm-${first}-${last}.svg`;
+}
+
 function buildScore() {
+  const wrapper = document.getElementById('score-wrapper');
   const img = document.getElementById('score-img');
-  if (!img) return;
-  const first = PASSAGE.measures[0].n;
-  const last = PASSAGE.measures[PASSAGE.measures.length - 1].n;
-  img.src = PASSAGE.score;
-  img.alt = `measures ${first} to ${last}`;
+  if (!img || !wrapper) return;
+  const src = scoreSrc();
+  wrapper.hidden = !src;
+  if (!src) return;
+  const list = measures();
+  img.src = src;
+  img.alt = `${movement().name}, measures ${list[0].n} to ${list[list.length - 1].n}`;
 }
 
 // One chip per note, grouped by measure and numbered, each chip as wide as the
@@ -140,7 +199,7 @@ function buildStrip() {
   if (!strip) return;
   strip.innerHTML = '';
   let n = 0;
-  PASSAGE.measures.slice(fromIdx, toIdx + 1).forEach(measure => {
+  measures().slice(fromIdx, toIdx + 1).forEach(measure => {
     const group = document.createElement('div');
     group.className = 'measure';
 
@@ -201,6 +260,7 @@ function finishPlayback() {
 
 function startPlayback() {
   if (playing) { stopPlayback(); return; }
+  if (!playable(movement())) return;
   playing = true;
   const btn = document.getElementById('play');
   if (btn) { btn.classList.add('playing'); btn.textContent = 'stop'; }
@@ -227,11 +287,12 @@ function schedulePass(when, chain, lead) {
   // the phone speaker plays silence once CarPlay or a Bluetooth speaker joins.
   if (lead) AudioKit.prepareOutput();
 
+  const here = movement();
   const events = selectedEvents();
   if (!events.length) { finishPlayback(); return; }
-  const unit = 15 / tempoBpm;                    // one sixteenth
-  const beat = unit * PASSAGE.unitsPerBeat;
-  const leadBeats = lead && countIn ? PASSAGE.beatsPerMeasure : 0;
+  const unit = (60 / tempoBpm) / here.unitsPerBeat;   // one sixteenth
+  const beat = unit * here.unitsPerBeat;
+  const leadBeats = lead && countIn ? here.beatsPerMeasure : 0;
   const start = when != null ? when
     : AudioKit.currentTime() + 0.06 + leadBeats * beat;
 
@@ -272,9 +333,9 @@ function schedulePass(when, chain, lead) {
   // was pending on the clock, which would take any tick placed before it.
   const totalUnits = events.reduce((sum, e) => sum + e.units, 0);
   if (metronomeOn) {
-    const beats = Math.round(totalUnits / PASSAGE.unitsPerBeat);
+    const beats = Math.round(totalUnits / here.unitsPerBeat);
     for (let b = 0; b < beats; b++) {
-      AudioKit.click(start + b * beat, b % PASSAGE.beatsPerMeasure === 0);
+      AudioKit.click(start + b * beat, b % here.beatsPerMeasure === 0);
     }
   }
   for (let b = 0; b < leadBeats; b++) {
@@ -328,50 +389,101 @@ function control(id) {
   return document.getElementById(id);
 }
 
+function selectMovement(index) {
+  if (playing) stopPlayback();
+  movementIdx = Math.max(0, Math.min(index, MOVEMENTS.length - 1));
+  const list = measures();
+  fromIdx = 0;
+  toIdx = Math.max(0, list.length - 1);
+  buildRangeOptions();
+  buildScore();
+  buildStrip();
+  syncControls();
+  savePrefs();
+}
+
 function selectRange(from, to) {
-  fromIdx = Math.max(0, Math.min(from, PASSAGE.measures.length - 1));
-  toIdx = Math.max(fromIdx, Math.min(to, PASSAGE.measures.length - 1));
-  syncRangeControls();
+  const last = measures().length - 1;
+  fromIdx = Math.max(0, Math.min(from, last));
+  toIdx = Math.max(fromIdx, Math.min(to, last));
+  syncControls();
   buildStrip();
   savePrefs();
   restartIfLooping();
 }
 
-// Two lists of bar numbers. The second can't point before the first — dragging
-// "from" past "to" pushes "to" along rather than refusing the change, since
-// what you meant is obvious and an error message here would just be in the way.
-function buildRangeControls() {
+function buildMovementOptions() {
+  const select = control('movement');
+  if (!select) return;
+  select.innerHTML = '';
+  MOVEMENTS.forEach((m, i) => {
+    const option = document.createElement('option');
+    option.value = i;
+    const bars = m.measures || [];
+    // The state goes in the option itself: picking a movement to find nothing
+    // there is a worse surprise than reading it in the list first.
+    option.textContent = bars.length
+      ? `${m.name} — mm ${bars[0].n}–${bars[bars.length - 1].n}`
+      : `${m.name} — not transcribed yet`;
+    select.appendChild(option);
+  });
+  select.addEventListener('change', () => selectMovement(Number(select.value)));
+}
+
+// Two lists of bar numbers, rebuilt whenever the movement changes. The second
+// can't point before the first — dragging "from" past "to" pushes "to" along
+// rather than refusing the change, since what you meant is obvious.
+function buildRangeOptions() {
   const from = control('from');
   const to = control('to');
   if (!from || !to) return;
   [from, to].forEach(select => {
     select.innerHTML = '';
-    PASSAGE.measures.forEach((measure, i) => {
+    measures().forEach((measure, i) => {
       const option = document.createElement('option');
       option.value = i;
       option.textContent = measure.n;
       select.appendChild(option);
     });
   });
-  from.addEventListener('change', () => {
-    const v = Number(from.value);
-    selectRange(v, Math.max(v, toIdx));
-  });
-  to.addEventListener('change', () => {
-    const v = Number(to.value);
-    selectRange(Math.min(v, fromIdx), v);
-  });
-  syncRangeControls();
 }
 
-function syncRangeControls() {
+function syncControls() {
+  const here = movement();
+  const list = measures();
+  const has = playable(here);
+
+  const movementSelect = control('movement');
+  if (movementSelect) movementSelect.value = movementIdx;
   const from = control('from');
   const to = control('to');
-  if (from) from.value = fromIdx;
-  if (to) to.value = toIdx;
+  if (from) { from.value = fromIdx; from.disabled = !has; }
+  if (to) { to.value = toIdx; to.disabled = !has; }
   const whole = control('whole');
   if (whole) {
-    whole.classList.toggle('on', fromIdx === 0 && toIdx === PASSAGE.measures.length - 1);
+    whole.disabled = !has;
+    whole.classList.toggle('on', has && fromIdx === 0 && toIdx === list.length - 1);
+  }
+  const play = control('play');
+  if (play) play.disabled = !has;
+
+  const strip = control('strip');
+  if (strip) strip.hidden = !has;
+
+  // The printed tempo, shown next to the tempo box rather than enforced by it:
+  // it's the number this movement is aimed at, and knowing how far off you are
+  // is the point of practising it slowly. It belongs to the movement, so it
+  // follows the movement rather than sitting where the first one left it.
+  const target = control('tempo-target');
+  if (target) target.textContent = here.targetBpm ? `(printed ${here.targetBpm})` : '';
+
+  // What this movement is, and what there is of it: the tempo it's printed at,
+  // and either the bars that are ready or a plain word that none are.
+  const state = control('movement-state');
+  if (state) {
+    state.textContent = has
+      ? `${here.meter}, printed tempo ${here.tempo} — mm ${list[0].n}–${list[list.length - 1].n} transcribed`
+      : `printed tempo ${here.tempo} — no measures transcribed yet, so there is nothing to play here`;
   }
 }
 
@@ -380,9 +492,18 @@ function initControls() {
   if (play) play.addEventListener('click', startPlayback);
 
   const whole = control('whole');
-  if (whole) {
-    whole.addEventListener('click', () => selectRange(0, PASSAGE.measures.length - 1));
-  }
+  if (whole) whole.addEventListener('click', () => selectRange(0, measures().length - 1));
+
+  const from = control('from');
+  if (from) from.addEventListener('change', () => {
+    const v = Number(from.value);
+    selectRange(v, Math.max(v, toIdx));
+  });
+  const to = control('to');
+  if (to) to.addEventListener('change', () => {
+    const v = Number(to.value);
+    selectRange(Math.min(v, fromIdx), v);
+  });
 
   const tempo = control('tempo');
   if (tempo) {
@@ -410,20 +531,12 @@ function initControls() {
     });
   });
 
-  // The printed tempo, shown next to the tempo box rather than enforced by it:
-  // it's the number this passage is aimed at, and knowing how far off you are
-  // is the point of practising it slowly.
-  const target = control('tempo-target');
-  if (target && PASSAGE.targetBpm) target.textContent = `(printed ${PASSAGE.targetBpm})`;
-
   const note = control('source-note');
   if (note) {
-    const first = PASSAGE.measures[0].n;
-    const last = PASSAGE.measures[PASSAGE.measures.length - 1].n;
-    note.innerHTML = `Stravinsky, <i>Danse infernale du roi Kastcheï</i> — mm ${first}–${last} `
-      + `of the cello part, tenor clef, 3/4 at ♩ = ${PASSAGE.targetBpm}. `
-      + `checked against the edition (Nieweg / McAlister) and engraved from `
-      + `<code>tools/scores/measure-practice.ly</code>.`;
+    note.innerHTML = 'Stravinsky, <i>L’Oiseau de feu</i> (1919 suite) — cello part, '
+      + 'Nieweg / McAlister edition (plate 22392), read from the part. '
+      + 'transcribed measures are engraved from <code>tools/scores/measure-practice.ly</code>; '
+      + 'the movements are listed as the part numbers them.';
   }
 }
 
@@ -431,9 +544,12 @@ function initControls() {
 
 function savePrefs() {
   try {
+    const list = measures();
     localStorage.setItem(PREFS_KEY, JSON.stringify({
       tempo: tempoBpm, metronome: metronomeOn, countIn, loop: loopOn,
-      from: PASSAGE.measures[fromIdx].n, to: PASSAGE.measures[toIdx].n,
+      movement: movement().id,
+      from: list.length ? list[fromIdx].n : null,
+      to: list.length ? list[toIdx].n : null,
     }));
   } catch (e) { /* private mode, or a full store — the page still works */ }
 }
@@ -446,12 +562,15 @@ function applyPrefs() {
   if (typeof p.metronome === 'boolean') metronomeOn = p.metronome;
   if (typeof p.countIn === 'boolean') countIn = p.countIn;
   if (typeof p.loop === 'boolean') loopOn = p.loop;
-  // Stored as bar numbers rather than indices: measures added in front of the
-  // passage would otherwise silently shift the range you left selected.
-  const indexOfBar = (n) => PASSAGE.measures.findIndex(m => m.n === n);
-  const a = indexOfBar(p.from);
-  const b = indexOfBar(p.to);
+  const m = MOVEMENTS.findIndex(x => x.id === p.movement);
+  if (m >= 0) movementIdx = m;
+  // Stored as bar numbers rather than indices: measures added in front of a
+  // movement would otherwise silently shift the range you left selected.
+  const list = measures();
+  const a = list.findIndex(x => x.n === p.from);
+  const b = list.findIndex(x => x.n === p.to);
   if (a >= 0 && b >= a) { fromIdx = a; toIdx = b; }
+  else { fromIdx = 0; toIdx = Math.max(0, list.length - 1); }
   [['metronome', metronomeOn], ['count-in', countIn], ['loop', loopOn]].forEach(([id, v]) => {
     const el = control(id);
     if (el) el.checked = v;
@@ -469,11 +588,14 @@ if (passageProblems.length) {
   if (detail) detail.textContent = 'passage: ' + passageProblems.join('; ');
 }
 
+toIdx = Math.max(0, measures().length - 1);
 applyPrefs();
-buildRangeControls();
+buildMovementOptions();
+buildRangeOptions();
 buildScore();
 buildStrip();
 initControls();
+syncControls();
 
 // Reached only if everything above ran. The page's load handler shows a visible
 // notice when this flag is missing, which is the only way a phone can tell a

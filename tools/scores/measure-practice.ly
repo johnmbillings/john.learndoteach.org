@@ -33,10 +33,17 @@
 %% manual throughout: the printed grouping (the ♪♬ cell, and the six-eighth
 %% beam in m 65) is not what 3/4 would do by itself.
 %%
+%% ONE BLOCK PER MOVEMENT. The builder renders each `<name> = \absolute {…}`
+%% block listed in its PRACTICE_MOVEMENTS table into its own SVG, so a second
+%% movement is a second block here and a second row there. A block carries its
+%% own clef and meter (the movements don't share either), on lines of their own
+%% before the music.
+%%
 %% HARD CONSTRAINT (see the score-workflow skill): one measure per line. The
-%% builder splits this block by line, so a stray line break adds a measure.
+%% builder splits a block by line — every line that ends in a bar check is a
+%% measure, every other line is setup — so a stray line break adds a measure.
 
-measurePractice = \absolute {
+danseInfernale = \absolute {
   \clef "tenor"
   \time 3/4
   \set Staff.midiInstrument = "cello"
@@ -51,6 +58,6 @@ measurePractice = \absolute {
 }
 
 \score {
-  \measurePractice
+  \danseInfernale
   \layout { }
 }
