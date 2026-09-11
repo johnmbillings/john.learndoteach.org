@@ -2,27 +2,32 @@
 
 %% Passage source for the measure-practice page.
 %%
-%% Transcribed by eye from a photograph of the printed cello part (tenor clef,
-%% plate 22392) — the two "normale" measures between the col legno bars at
-%% 63–64 and the col legno that resumes at 67. Written in **absolute octaves**
-%% so each measure stands alone when the builder slices it.
+%% Stravinsky, L'Oiseau de feu (1919 suite) — Danse infernale du roi Kastcheï,
+%% cello part, mm 65–66: the two "normale" measures between the col legno bars
+%% at 63–64 and the col legno that resumes at 67. Edition: Nieweg / McAlister
+%% (plate 22392), the same part the page's owner plays from. Written in
+%% **absolute octaves** so each measure stands alone when the builder slices it.
 %%
-%% What the photograph shows, and what is therefore engraved here:
+%% First read off a photograph of the part, then checked against the edition
+%% itself, note for note. What the print shows, and what is engraved here:
 %%   - tenor clef, no key signature
-%%   - m 65: six equal notes beamed as one group, an accent on every one,
+%%   - m 65: six eighths beamed as one group, an accent on every one,
 %%           "normale" above the first note and ff marcatissimo below it
-%%   - m 66: four beamed, then a single flagged note and a rest of the same
-%%           value — so both measures hold six of them
+%%   - m 66: four beamed, then a flagged eighth and an eighth rest
 %%   - the only printed accidentals are the ♯ on the second note of m 65 and
 %%     the ♯ ♮ ♯ on the first three notes of m 66 (LilyPond reprints them by
 %%     the same rules the edition follows)
 %%
-%% The printed part shows no time signature here (it is set earlier in the
-%% movement), and the photograph doesn't reach far enough back to read it, so
-%% the Time_signature_engraver is removed in the builder and 3/4 is used only
-%% to get the bar lines in the right places: six eighths per measure, beamed
-%% 6 in m 65 and 4 + 1 + rest in m 66, exactly as printed. All beams are
-%% manual for that reason.
+%% The movement is in 3/4 at ♩ = 168, set at its head and unchanged by here, so
+%% the 3/4 below is the real meter and six eighths fill the bar. The part
+%% doesn't reprint the signature at m 65 — nothing changes there — so the
+%% builder removes the Time_signature_engraver and these measures look on the
+%% page the way they look in the part. Beams are manual to match the printed
+%% grouping (6, then 4 + 1 + rest), which the 3/4 default would otherwise
+%% regroup.
+%%
+%% The col legno bars on either side (63–64, 67) are sixteenths, not eighths —
+%% worth knowing before adding them here.
 %%
 %% HARD CONSTRAINT (see the score-workflow skill): one measure per line. The
 %% builder splits this block by line, so a stray line break adds a measure.

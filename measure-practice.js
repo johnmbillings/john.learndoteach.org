@@ -4,12 +4,16 @@
 // check your hands against, one measure at a time, until the shape of the bar
 // is memorised rather than decoded.
 //
-// The passage is the two "normale" measures (65–66) between the col legno bars
-// at 63–64 and the col legno that resumes at 67, transcribed from a photograph
-// of the printed cello part. Tenor clef, no key signature, six eighths to the
-// bar: m 65 is six of them beamed as one group, m 66 four beamed plus a single
-// note and a rest. Every note carries an accent — ff marcatissimo — so playback
-// is short and re-articulated rather than legato.
+// The passage is Stravinsky's Danse infernale du roi Kastcheï (L'Oiseau de feu,
+// 1919 suite), cello part, mm 65–66: the two "normale" measures between the col
+// legno bars at 63–64 and the col legno that resumes at 67. Tenor clef, no key
+// signature, 3/4 at ♩ = 168 — six eighths to the bar, m 65 beamed as one group
+// and m 66 as four plus a flagged eighth and an eighth rest. Every note carries
+// an accent under ff marcatissimo, so playback is short and re-articulated
+// rather than legato.
+//
+// Read off a photograph of the part first, then checked note for note against
+// the edition it comes from (Nieweg / McAlister, plate 22392).
 //
 // TWO SOURCES, ONE PASSAGE: the engraving comes from
 // tools/scores/measure-practice.ly (built to scores/measure-practice/*.svg by
@@ -28,7 +32,8 @@ const cello = AudioKit.instruments.cello;
 const PASSAGE = {
   scoreDir: 'scores/measure-practice/',
   notesPerBeat: 2,    // the printed beat is a quarter; the passage moves in eighths
-  beatsPerMeasure: 3,
+  beatsPerMeasure: 3, // 3/4
+  targetBpm: 168,     // the movement's printed tempo — what "up to speed" means
   measures: [
     { n: 65, notes: ['F4', 'G#4', 'C5', 'B4', 'G#4', 'B4'] },
     { n: 66, notes: ['D#5', 'D5', 'G#4', 'F4', 'B4', null] },
@@ -361,13 +366,20 @@ function initControls() {
     });
   });
 
+  // The printed tempo, shown next to the tempo box rather than enforced by it:
+  // it's the number this passage is aimed at, and knowing how far off you are
+  // is the point of practising it slowly.
+  const target = control('tempo-target');
+  if (target && PASSAGE.targetBpm) target.textContent = `(printed ${PASSAGE.targetBpm})`;
+
   const note = control('source-note');
   if (note) {
     const first = PASSAGE.measures[0].n;
     const last = PASSAGE.measures[PASSAGE.measures.length - 1].n;
-    note.innerHTML = `mm ${first}–${last} of the cello part, tenor clef — read off the printed page `
-      + `and engraved from <code>tools/scores/measure-practice.ly</code>. `
-      + `check it against your part before you trust it.`;
+    note.innerHTML = `Stravinsky, <i>Danse infernale du roi Kastcheï</i> — mm ${first}–${last} `
+      + `of the cello part, tenor clef, 3/4 at ♩ = ${PASSAGE.targetBpm}. `
+      + `checked against the edition (Nieweg / McAlister) and engraved from `
+      + `<code>tools/scores/measure-practice.ly</code>.`;
   }
 }
 
