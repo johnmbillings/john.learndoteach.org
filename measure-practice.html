@@ -151,6 +151,7 @@
       width: 3.4em;
     }
     .ctl input[type="number"]:hover { border-color: #9cd8ff; }
+    .ctl-hint { color: rgba(255, 255, 255, 0.35); font-style: italic; }
 
     button {
       background: none;
@@ -243,6 +244,7 @@
     <label class="ctl">
       <span>♩ =</span>
       <input id="tempo" type="number" min="20" max="180" step="1" value="60">
+      <span id="tempo-target" class="ctl-hint"></span>
     </label>
     <label class="switch">
       <input id="metronome" type="checkbox" checked>
@@ -292,6 +294,6 @@
        moment the two disagree about what controls exist. Bump ?v= whenever
        either file changes in a way the other depends on. -->
   <script src="audio.js?v=4"></script>
-  <script src="measure-practice.js?v=1"></script>
+  <script src="measure-practice.js?v=2"></script>
 </body>
 </html>
