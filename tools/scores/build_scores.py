@@ -25,7 +25,7 @@ PRACTICE_LY = HERE / 'measure-practice.ly'
 # The bar number the measure-practice source starts on. It lives here rather
 # than in the .ly because a single-measure slice would lose a \set inside the
 # music, and the page labels its measures from the file names this produces.
-PRACTICE_FIRST_BAR = 65
+PRACTICE_FIRST_BAR = 63
 
 src = SRC_LY.read_text()
 m = re.search(r'\\repeat\s+volta\s+2\s*\{(.+?)\n\s*\}', src, re.DOTALL)
@@ -121,7 +121,7 @@ def make_practice_ly(bars, first_bar):
     return f'''\\version "2.24.0"
 \\paper {{
   indent = 0
-  line-width = 120\\mm
+  line-width = 170\\mm
   ragged-right = ##t
   print-page-number = ##f
 }}
@@ -157,12 +157,15 @@ def build_measure_practice(tmp):
     bars = practice_measures()
     first, last = PRACTICE_FIRST_BAR, PRACTICE_FIRST_BAR + len(bars) - 1
     out = REPO / 'scores' / 'measure-practice'
-    # The whole passage, then each measure on its own — the page shows one or
-    # the other depending on which measures you have selected.
+    # One engraving of the whole passage, with every bar numbered. The page
+    # picks a range out of it rather than showing a different picture per
+    # range: a per-range SVG would mean one file per pair of measures, and the
+    # printed bar numbers already say where your range sits on the line.
     render(make_practice_ly(bars, first), out / f'mm-{first}-{last}.svg', tmp)
-    for i, bar in enumerate(bars):
-        n = first + i
-        render(make_practice_ly([bar], n), out / f'mm-{n}.svg', tmp)
+    for stale in out.glob('*.svg'):
+        if stale.name != f'mm-{first}-{last}.svg':
+            stale.unlink()
+            print(f'  -- removed {stale.relative_to(REPO)} (no longer built)')
 
 
 with tempfile.TemporaryDirectory() as tmpdir:

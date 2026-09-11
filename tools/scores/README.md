@@ -12,22 +12,23 @@ sources in this directory.
   by hand to follow the Peters/Becker edition. Written in **absolute octaves**
   (not `\relative`) so each measure is self-contained.
 - `measure-practice.ly` — Stravinsky, *L'Oiseau de feu* (1919 suite), **Danse
-  infernale du roi Kastcheï**, cello part, mm 65–66: the two `normale` measures
-  between the col legno bars at 63–64 and the col legno that resumes at 67.
-  Edition: Nieweg / McAlister, plate 22392 — the part John plays from.
-  Absolute octaves, one measure per line, like the allemande.
+  infernale du roi Kastcheï**, cello part, mm 63–68: one system of the printed
+  part and one phrase — col legno on a hammered G♯ (63–64), the same G♯
+  answered normale and marcatissimo (65–66), col legno again (67–68). Edition:
+  Nieweg / McAlister, plate 22392 — the part John plays from, read from the
+  part itself. Absolute octaves, one measure per line, like the allemande.
 
-  Transcribed first from a photograph of the part (see **Reading notes off a
-  photograph** below) and then **checked note for note against the edition**,
-  so it is no longer a first pass. The movement is in 3/4 at ♩ = 168, set at
-  its head and unchanged by m 65, so six eighths fill each bar. The part
-  doesn't reprint the signature there — nothing changes — so the builder
-  removes the `Time_signature_engraver` and the measures look the way they look
-  in the part. Beams are manual, matching the printed grouping (6, then
-  4 + 1 + rest). The col legno bars either side are sixteenths, not eighths.
+  3/4 at ♩ = 168, set at the movement's head and unchanged here. Nearly every
+  beat is the same limping cell — an eighth and two sixteenths — which is why
+  the two normale bars of straight eighths land the way they do. The part
+  doesn't reprint the time signature anywhere in the system, so the builder
+  removes the `Time_signature_engraver`. Beams are manual throughout: neither
+  the ♪♬ cell nor m 65's six-eighth beam is what 3/4 would do by itself.
 
-  Its pitches are duplicated as a playback table in `measure-practice.js` —
+  Its notes are duplicated as a playback table in `measure-practice.js` —
   **edit the two together**, or the page will play something it isn't showing.
+  That file checks each measure adds up to a bar and says so on the page if one
+  doesn't, which catches the likelier half of that mistake.
 
 ## Build
 Requires LilyPond on `$PATH`. Run `tools/scores/setup.sh` to install it if

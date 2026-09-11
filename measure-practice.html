@@ -69,27 +69,36 @@
       justify-content: center;
       align-items: flex-start;
       gap: 0.9rem 1.4rem;
-      width: min(48rem, 100%);
+      width: min(56rem, 100%);
     }
     .measure {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 0.25rem;
+      /* A bar's worth of chips, or the screen — whichever is narrower. The
+         chips divide this width in proportion to their note values, so the
+         rhythm survives on a phone even though the row doesn't. */
+      width: min(26rem, 100%);
     }
     .measure-no {
       font-size: 0.85rem;
       letter-spacing: 0.12em;
       color: rgba(255, 255, 255, 0.35);
     }
-    .measure-notes { display: flex; gap: 0.15rem; }
+    /* One row of chips per measure. A chip's width is set by the script, in
+       proportion to how long the note is, so a bar reads as its rhythm. */
+    .measure-notes { display: flex; gap: 0.15rem; width: 100%; }
     .note {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 2.3em;
-      padding: 0.3em 0.4em;
-      font-size: 1.2rem;
+      padding: 0.3em 0;
+      font-size: 1.1rem;
+      white-space: nowrap;
+      overflow: hidden;
+      min-width: 0;
+      box-sizing: border-box;
       border: 1px solid rgba(255, 255, 255, 0.18);
       color: #ddd;
       transition: background 0.1s, color 0.1s, border-color 0.1s;
@@ -170,8 +179,18 @@
     }
     #play.playing { border-color: #9cd8ff; color: #9cd8ff; background: rgba(156, 216, 255, 0.12); }
 
-    #span { display: inline-flex; gap: 0.3rem; }
-    #span button.on { border-color: #9cd8ff; color: #9cd8ff; background: rgba(156, 216, 255, 0.12); }
+    .ctl select {
+      background: #000;
+      border: 1px solid #666;
+      color: #ddd;
+      font-family: inherit;
+      font-size: 0.95rem;
+      padding: 0.2em 0.3em;
+    }
+    .ctl select:hover { border-color: #9cd8ff; }
+    .ctl .dash { color: rgba(255, 255, 255, 0.35); }
+    #whole { font-size: 0.9rem; padding: 0.25em 0.55em; }
+    #whole.on { border-color: #9cd8ff; color: #9cd8ff; background: rgba(156, 216, 255, 0.12); }
 
     .switch {
       display: inline-flex;
@@ -218,8 +237,8 @@
 
   <h1>measure practice</h1>
   <p class="hint">
-    a couple of measures at a time, played as printed — the notes and the
-    rhythm, slowly enough to hear what the hand is aiming at.
+    pick a measure or a handful, and hear them played as printed — the notes
+    and the rhythm, slowly enough to hear what the hand is aiming at.
   </p>
 
   <p id="load-error" hidden>
@@ -239,7 +258,10 @@
   <div class="controls">
     <span class="ctl">
       measures
-      <span id="span"></span>
+      <select id="from" aria-label="first measure"></select>
+      <span class="dash">–</span>
+      <select id="to" aria-label="last measure"></select>
+      <button id="whole" type="button">all</button>
     </span>
     <label class="ctl">
       <span>♩ =</span>
@@ -294,6 +316,6 @@
        moment the two disagree about what controls exist. Bump ?v= whenever
        either file changes in a way the other depends on. -->
   <script src="audio.js?v=4"></script>
-  <script src="measure-practice.js?v=2"></script>
+  <script src="measure-practice.js?v=3"></script>
 </body>
 </html>
