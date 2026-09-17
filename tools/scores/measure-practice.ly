@@ -43,6 +43,40 @@
 %% builder splits a block by line — every line that ends in a bar check is a
 %% measure, every other line is setup — so a stray line break adds a measure.
 
+%% --- Danse infernale, mm 1–12: the opening and the entry at m 11 ------------
+%%
+%% One chord, nine bars of rest, and the entry. The part prints mm 2–10 as a
+%% nine-bar multirest; they are written out one to a bar here, numbered, because
+%% the point of this passage on the page is counting them.
+%%
+%% m 1 is a three-note chord — A2 on the G string, G3 on the D, open A3 — struck
+%% down-bow, sfff, "non arpeg. possibile" (all three at once, not rolled). From
+%% m 11 the cello is an octave A oscillating in sixteenths, low–high–high–low to
+%% a beat, under a double stop that starts it sfff and drops to pp at once.
+
+danseInfernaleOpening = \absolute {
+  \clef "bass"
+  \time 3/4
+  \set Staff.midiInstrument = "cello"
+  \autoBeamOff
+
+  <a, g a>8-#(make-dynamic-script "sfff")\downbow ^\markup { \italic "non arpeg. possibile" } r8 r4 r4 |
+  R2. |
+  R2. |
+  R2. |
+  R2. |
+  R2. |
+  R2. |
+  R2. |
+  R2. |
+  R2. |
+  <a, a>8-#(make-dynamic-script "sfff")\downbow [ a16\upbow\pp ^\markup { \italic "subito" } a,16 ] a,16 [ a16( a16 a,16) ] a,16 [ a16( a16 a,16) ] |
+  a,16 [ a16( a16 a,16) ] a,16 [ a16( a16 a,16) ] a,16 [ a16( a16 a,16) ] |
+}
+
+
+%% --- Danse infernale, mm 63–68: the col legno phrase ------------------------
+
 danseInfernale = \absolute {
   \clef "tenor"
   \time 3/4

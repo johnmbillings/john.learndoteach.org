@@ -89,6 +89,36 @@
       display: block;
     }
 
+    /* --- the count: which bar, which beat --- */
+    /* Nine empty bars is the hard part of the Danse infernale's opening, and an
+       empty bar looks exactly like the one before it. This is the page saying
+       the count out loud. */
+    #counter {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      opacity: 0.35;
+      transition: opacity 0.2s;
+    }
+    #counter.running { opacity: 1; }
+    #count-bar {
+      font-size: 3.2rem;
+      line-height: 1;
+      letter-spacing: 0.04em;
+      color: #9cd8ff;
+      font-variant-numeric: tabular-nums;
+    }
+    #count-beats { display: flex; gap: 0.5rem; }
+    #count-beats .pip {
+      width: 0.6rem;
+      height: 0.6rem;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      transition: background 0.08s, border-color 0.08s;
+    }
+    #count-beats .pip.on { background: #9cd8ff; border-color: #9cd8ff; }
+
     /* --- the note strip: one chip per note, lit as it sounds --- */
     #strip {
       display: flex;
@@ -142,6 +172,15 @@
       letter-spacing: 0.08em;
     }
     .note.rest.sounding { background: rgba(156, 216, 255, 0.15); color: rgba(255, 255, 255, 0.6); }
+    /* A chord names every string it crosses, which is more than a chip's width
+       wants; the engraving above carries the detail, so this just has to say
+       "more than one note here". */
+    .note.chord { font-size: 0.8rem; letter-spacing: -0.01em; }
+    /* The octave rides small next to the letter: in the Danse infernale's
+       opening the whole figure is one letter in two octaves, and the numbers
+       are the only thing that shows it. */
+    .note .oct { font-size: 0.72em; opacity: 0.5; margin-left: 0.04em; }
+    .note.sounding .oct { opacity: 0.7; }
 
     /* Shown only when the page's scripts didn't run — a failed script fetch
        otherwise looks exactly like a practice tool that quietly does nothing. */
@@ -289,6 +328,11 @@
     <img id="score-img" alt="the measures being practised">
   </div>
 
+  <div id="counter">
+    <span id="count-bar">–</span>
+    <span id="count-beats"></span>
+  </div>
+
   <div id="strip"></div>
 
   <button id="play" type="button">play</button>
@@ -354,6 +398,6 @@
        moment the two disagree about what controls exist. Bump ?v= whenever
        either file changes in a way the other depends on. -->
   <script src="audio.js?v=4"></script>
-  <script src="measure-practice.js?v=4"></script>
+  <script src="measure-practice.js?v=5"></script>
 </body>
 </html>
