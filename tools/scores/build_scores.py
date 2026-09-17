@@ -28,6 +28,7 @@ PRACTICE_LY = HERE / 'measure-practice.ly'
 # a new block in the .ly and a new row here; the page works the SVG's name out
 # from the id and the bars, so the two stay in step without a third list.
 PRACTICE_MOVEMENTS = [
+    ('danseInfernaleOpening', 'danse-infernale', 1),
     ('danseInfernale', 'danse-infernale', 63),
 ]
 

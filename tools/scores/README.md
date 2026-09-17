@@ -21,7 +21,21 @@ sources in this directory.
 
   | block | movement | measures |
   |---|---|---|
+  | `danseInfernaleOpening` | Danse infernale du roi Kastcheï | 1–12 |
   | `danseInfernale` | Danse infernale du roi Kastcheï | 63–68 |
+
+  A movement can hold several blocks — passages with gaps between them. Each
+  block is rendered separately and the page shows whichever passage the selected
+  measures fall in; a range can't reach across a gap.
+
+  mm 1–12 are the opening: the three-note chord (A2 on the G string, G3 on the
+  D, open A3, struck at once — *non arpeg. possibile*), nine bars of rest, and
+  the entry at m 11 on an octave A. The part prints mm 2–10 as a nine-bar
+  multirest; they are written out one to a bar here, numbered, because counting
+  them is the whole point of that passage on the page. Note also that `\sfff`
+  is not one of LilyPond's dynamics — it's built inline with
+  `-#(make-dynamic-script "sfff")`, the way `allemande.ly` builds its text
+  dynamics.
 
   The Danse infernale is 3/4 at ♩ = 168, set at the movement's head and
   unchanged through these bars. Nearly every beat is the same limping cell — an
