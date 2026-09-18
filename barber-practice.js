@@ -16,10 +16,10 @@
 // a movement is another. Whoever adds measures here should decide how much
 // belongs on a public site, and keep the answer small.
 //
-// One measure is on the page so far — III, m 3 — and that is the scale the
-// decision above was made at. Its engraving lives in tools/scores/barber.ly,
-// kept apart from the public-domain sources for the same reason; the two
-// describe the same bar and have to be edited together.
+// Two measures are on the page so far — III, mm 3–4 — and that is the scale
+// the decision above was made at. Their engraving lives in
+// tools/scores/barber.ly, kept apart from the public-domain sources for the
+// same reason; the two describe the same bars and have to be edited together.
 //
 // The movement headings below are Barber's own, and are facts about the work
 // rather than any of its music.
@@ -45,8 +45,8 @@
     shortTitle: 'barber',
     sourceNote: 'Barber, <i>Concerto for Violin and Orchestra</i>, Op. 14 (1939) — '
       + 'the orchestra cello part, rented from G. Schirmer. the concerto is still '
-      + 'in copyright, so what is here is one measure read off the part on your '
-      + 'stand — a bar to drill before a rehearsal, and no more than that.',
+      + 'in copyright, so what is here is two measures read off the part on your '
+      + 'stand — a phrase to drill before a rehearsal, and no more than that.',
     movements: [
       { id: 'i-allegro', name: 'I. Allegro' },
       { id: 'ii-andante', name: 'II. Andante' },
@@ -72,6 +72,16 @@
               rest(2), rest(2), stop(2),      // beat 2: the triplet, pp on its third
               rest(6),                        // beat 3: a quarter rest
               stop(3), rest(3),               // beat 4: the stop again, then a rest
+          ] },
+          // m 4 is the bar in plain eighths: eight of them, and only the third
+          // and the seventh sound — squarely on beats 2 and 4. Both bars answer
+          // on those two beats, but m 3 pushes its beat-2 entry to the last
+          // third of the triplet, late, and m 4 puts it on the beat. Beat 4 is
+          // in the same place in both, which is what makes the difference on
+          // beat 2 something you can hear rather than count.
+          { n: 4, notes: [
+              rest(3), rest(3), stop(3), rest(3),     // beats 1–2: the stop on the 3rd eighth
+              rest(3), rest(3), stop(3), rest(3),     // beats 3–4: and again on the 7th
           ] },
         ],
       },
