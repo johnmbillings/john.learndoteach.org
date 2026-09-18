@@ -13,9 +13,12 @@
 //   { id, name, tempo?, targetBpm?, meter?, clef?,
 //     unitsPerBeat, beatsPerMeasure, measures? }
 // where `measures` is [{ n, notes: [...] }] and a movement without any is
-// listed but sits out. Durations are counted in sixteenths; `unitsPerBeat` and
-// `beatsPerMeasure` say how to count them, and drive the metronome, the
-// count-in, the bar counter and the bar check.
+// listed but sits out. Durations are counted in units of the movement's own
+// choosing: `unitsPerBeat` says how many go to a printed beat, so a movement of
+// plain eighths and sixteenths counts in sixteenths (4 to a quarter) and one
+// that also has triplets counts in sixths of a beat (6), where an eighth is 3
+// units and a triplet eighth 2. With `beatsPerMeasure` it drives the metronome,
+// the count-in, the bar counter and the bar check.
 //
 // A transcribed passage exists twice: engraved in tools/scores/*.ly (built to
 // scores/measure-practice/ by tools/scores/build_scores.py) and as notes in the
@@ -28,9 +31,14 @@
 const { pitchToMidi } = AudioKit;
 const cello = AudioKit.instruments.cello;
 
-// Durations are counted in sixteenths — the shortest note in the passages so
-// far, so every value is a whole number of them. An event holds a list of
-// pitches: one for a note, several for a chord or a double stop, none for a rest.
+// An event holds a list of pitches: one for a note, several for a chord or a
+// double stop, none for a rest — and a duration in the movement's units.
+//
+// These two builders bake in the sixteenth grid (unitsPerBeat: 4), which is
+// what most passages want. A movement counting some other way — Barber's III
+// counts in sixths of a beat, so that a triplet lands on a whole number — has
+// to spell its durations out with chord() and rest() instead, or every note in
+// it comes out the wrong length.
 const eighth = (pitch) => ({ pitches: [pitch], units: 2 });
 const sixteenth = (pitch) => ({ pitches: [pitch], units: 1 });
 const rest = (units) => ({ pitches: [], units });

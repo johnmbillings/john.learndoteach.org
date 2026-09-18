@@ -6,9 +6,9 @@ Two jobs, one script:
   * the per-loop scores for songs.json — for each loop with a `label` like
     "mm 4-6" and a `score` path, extracts those measures from `allemande.ly`
     and renders a cropped SVG into the path the JSON points at;
-  * the measure-practice passages — renders each transcribed movement of
-    `measure-practice.ly` into `scores/measure-practice/`, which
-    measure-practice.html displays.
+  * the practice passages — renders each transcribed movement listed in
+    PRACTICE_MOVEMENTS into `scores/measure-practice/`, which the practice
+    pages (measure-practice.html, barber.html) display.
 
 Requires: lilypond on PATH.
 
@@ -22,14 +22,21 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
 SRC_LY = HERE / 'allemande.ly'
 PRACTICE_LY = HERE / 'measure-practice.ly'
-# The movements of measure-practice.ly that have music: the LilyPond variable
-# holding them, the movement id measure-practice.js uses, and the bar number the
-# block starts on (the music itself carries no \set for it). A new movement is
-# a new block in the .ly and a new row here; the page works the SVG's name out
-# from the id and the bars, so the two stay in step without a third list.
+BARBER_LY = HERE / 'barber.ly'
+# The passages the practice pages drill: the source holding them, the LilyPond
+# variable inside it, the movement id the piece file uses, and the bar number the
+# block starts on (the music itself carries no \set for it). A new passage is a
+# new block in a .ly and a new row here; a page works the SVG's name out from the
+# id and the bars, so the two stay in step without a third list.
+#
+# The source is named per row rather than assumed, because the pieces don't
+# share one: the Stravinsky is public domain and the Barber is not, and keeping
+# each in its own file keeps that boundary where someone will see it. The
+# engravings still share one output directory, since the pages do.
 PRACTICE_MOVEMENTS = [
-    ('danseInfernaleOpening', 'danse-infernale', 1),
-    ('danseInfernale', 'danse-infernale', 63),
+    (PRACTICE_LY, 'danseInfernaleOpening', 'danse-infernale', 1),
+    (PRACTICE_LY, 'danseInfernale', 'danse-infernale', 63),
+    (BARBER_LY, 'presto', 'iii-presto', 3),
 ]
 
 src = SRC_LY.read_text()
@@ -99,8 +106,8 @@ def make_ly(start, end):
 '''
 
 
-def practice_block(variable):
-    """One movement's block from measure-practice.ly, as (setup, measures).
+def practice_block(source, variable):
+    """One passage's block from `source`, as (setup, measures).
 
     Setup lines (\\clef, \\time, \\set …) carry no bar check, so the bar-check
     line ending is what marks a line as a measure — the same one-measure-per-line
@@ -108,9 +115,9 @@ def practice_block(variable):
     because the movements share neither clef nor meter.
     """
     body = re.search(variable + r'\s*=\s*\\absolute\s*\{(.+?)\n\}',
-                     PRACTICE_LY.read_text(), re.DOTALL)
+                     source.read_text(), re.DOTALL)
     if not body:
-        sys.exit(f'{variable} block not found in {PRACTICE_LY}')
+        sys.exit(f'{variable} block not found in {source}')
     lines = [l.strip() for l in body.group(1).splitlines() if l.strip()]
     return ([l for l in lines if not l.endswith('|')],
             [l for l in lines if l.endswith('|')])
@@ -161,8 +168,8 @@ def build_measure_practice(tmp):
     """One engraving per transcribed movement, named for the page to find."""
     out = REPO / 'scores' / 'measure-practice'
     wanted = set()
-    for variable, movement_id, first_bar in PRACTICE_MOVEMENTS:
-        setup, bars = practice_block(variable)
+    for source, variable, movement_id, first_bar in PRACTICE_MOVEMENTS:
+        setup, bars = practice_block(source, variable)
         last_bar = first_bar + len(bars) - 1
         name = f'{movement_id}-mm-{first_bar}-{last_bar}.svg'
         wanted.add(name)
