@@ -124,6 +124,31 @@ def practice_block(source, variable):
             [l for l in lines if l.endswith('|')])
 
 
+# Every notehead and rest in a practice engraving is stamped with the moment it
+# falls on, so the page can light up the note it is playing. The practice page
+# shows the SVG as an <img> and can't reach inside it; what it can do is lay a
+# band over it, and for that it needs to know where each event sits. The moments
+# in reading order are the passage's events in reading order — a chord's heads
+# share a moment, and a rest has one too — so the page can pair them up with the
+# notes it is playing without the two lists having to agree about anything else.
+#
+# The bar lines are stamped as well: a bar line's own y is the middle of its
+# staff, which is how the page knows which system a moment landed in once the
+# music wraps onto more than one line.
+STAMP = r'''#(define (practice-event-at grob)
+  ;; A whole-bar rest is a spanner rather than an item, so take its left bound
+  ;; and ask that for the column; everything else is already an item.
+  (let* ((item (if (ly:spanner? grob) (ly:spanner-bound grob LEFT) grob))
+         (column (if (ly:item? item) (ly:item-get-column item) #f))
+         (moment (if (ly:grob? column) (ly:grob-property column 'when) #f)))
+    (if (ly:moment? moment)
+        (list (cons 'class "ev")
+              (cons 'data-at (number->string
+                               (exact->inexact (ly:moment-main moment)))))
+        '())))
+'''
+
+
 def make_practice_ly(setup, bars, first_bar):
     """A snippet of `bars`, numbered from `first_bar`, under its own `setup`.
 
@@ -141,11 +166,16 @@ def make_practice_ly(setup, bars, first_bar):
   print-page-number = ##f
 }}
 \\header {{ tagline = "" }}
+{STAMP}
 \\score {{
   \\new Staff \\with {{ \\remove "Time_signature_engraver" }} {{
     \\set Score.currentBarNumber = #{first_bar}
     \\set Score.barNumberVisibility = #all-bar-numbers-visible
     \\override Score.BarNumber.break-visibility = #'#(#t #t #t)
+    \\override NoteHead.output-attributes = #practice-event-at
+    \\override Rest.output-attributes = #practice-event-at
+    \\override MultiMeasureRest.output-attributes = #practice-event-at
+    \\override Staff.StaffSymbol.output-attributes = #'((class . "st"))
 {body}
   }}
   \\layout {{
