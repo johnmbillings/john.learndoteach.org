@@ -1,114 +1,54 @@
-// Measure practice. A part, movement by movement: pick a movement, pick a
-// range of its measures, and hear them played as printed — the notes and the
-// rhythm — so a bar that won't come can be drilled on its own and then put
+// The measure-practice engine: a part, movement by movement. Pick a movement,
+// pick a range of its measures, and hear them played as printed — the notes and
+// the rhythm — so a bar that won't come can be drilled on its own and then put
 // back into its phrase.
 //
-// The piece is Stravinsky's L'Oiseau de feu (1919 suite), cello part, from the
-// Nieweg / McAlister edition (plate 22392). All seven movements are listed,
-// because a dropdown that hides the ones with nothing in them would also hide
-// how much of the part is still untranscribed. A movement with no measures
-// says so and sits out.
+// This file holds everything that isn't the music. The music lives in a piece
+// file — firebird-practice.js, barber-practice.js — which ends by calling
+// Practice.start() with its movements; a page loads this, then one of those.
 //
-// The part numbers its bars in three runs, which is why a movement carries its
-// own numbers rather than a global count: the Introduction numbers from 1 and
-// the next two movements continue it (to m 81), the Ronde des princesses
-// starts again at 1, as does the Danse infernale, and the Berceuse starts again
-// at 1 with the Final continuing it from m 47.
+// A piece is:
+//   { id, title, shortTitle?, sourceNote?, movements: [...] }
+// and a movement is:
+//   { id, name, tempo?, targetBpm?, meter?, clef?,
+//     unitsPerBeat, beatsPerMeasure, measures? }
+// where `measures` is [{ n, notes: [...] }] and a movement without any is
+// listed but sits out. Durations are counted in sixteenths; `unitsPerBeat` and
+// `beatsPerMeasure` say how to count them, and drive the metronome, the
+// count-in, the bar counter and the bar check.
 //
-// TWO SOURCES, ONE PASSAGE: the engraving comes from
-// tools/scores/measure-practice.ly (built to scores/measure-practice/ by
-// tools/scores/build_scores.py, one SVG per transcribed movement) and the
-// playback from the MOVEMENTS table below. They describe the same music and
-// have to be edited together — a note changed in one and not the other means
-// the page plays something it isn't showing. checkPassage() catches the
-// easiest way to get that wrong.
+// A transcribed passage exists twice: engraved in tools/scores/*.ly (built to
+// scores/measure-practice/ by tools/scores/build_scores.py) and as notes in the
+// piece file. They describe the same music and have to be edited together — a
+// note changed in one and not the other means the page plays something it isn't
+// showing. checkPassage() catches the easiest way to get that wrong.
 //
 // Audio helpers (pitchToMidi, the cello voice, the shared clock) live in audio.js.
 
 const { pitchToMidi } = AudioKit;
 const cello = AudioKit.instruments.cello;
 
-// Durations are counted in sixteenths — the shortest note here, so every value
-// in the passage is a whole number of them. An event holds a list of pitches:
-// one for a note, several for a chord or a double stop, none for a rest.
+// Durations are counted in sixteenths — the shortest note in the passages so
+// far, so every value is a whole number of them. An event holds a list of
+// pitches: one for a note, several for a chord or a double stop, none for a rest.
 const eighth = (pitch) => ({ pitches: [pitch], units: 2 });
 const sixteenth = (pitch) => ({ pitches: [pitch], units: 1 });
 const rest = (units) => ({ pitches: [], units });
 const eighthRest = () => rest(2);
 const chord = (units, ...pitches) => ({ pitches, units });
-// One beat of the Danse infernale's col legno figure: an eighth and two
-// sixteenths, all on the same note. Written once because the part writes it
-// fourteen times in six bars.
-const cell = (pitch) => [eighth(pitch), sixteenth(pitch), sixteenth(pitch)];
 
-const G = 'G#4';   // the col legno note: G♯ on the first ledger line, all four bars
+// The piece this page is showing, and where its settings are remembered. Both
+// are set by start(); until then the engine has nothing to show.
+let PIECE = { id: 'none', title: '', movements: [] };
+let PREFS_KEY = 'measure-practice:v3:none';
 
-// From m 11 the part is an octave A in sixteenths: low, high, high, low to a
-// beat, over and over. Written once because the beat is the thing to learn.
-const octaveBeat = () => [sixteenth('A2'), sixteenth('A3'), sixteenth('A3'), sixteenth('A2')];
-
-// The movements of the suite, in playing order. `measures` is what has been
-// transcribed and checked against the part so far; the rest are listed for
-// their names and their printed tempo until someone does the reading.
-//
-// A movement that carries music also carries how to count it: `unitsPerBeat`
-// (sixteenths to a printed beat) and `beatsPerMeasure`, which drive the
-// metronome, the count-in and the bar check.
-const MOVEMENTS = [
-  { id: 'introduction', name: 'Introduction', tempo: '♪ = 108' },
-  { id: 'oiseau-et-sa-danse', name: 'L’Oiseau de feu et sa danse', tempo: '♩ = 152' },
-  { id: 'variation', name: 'Variation de l’Oiseau de feu', tempo: '♩. = 76' },
-  { id: 'ronde-des-princesses', name: 'Ronde des princesses', tempo: '♩ = 72' },
-  {
-    id: 'danse-infernale',
-    name: 'Danse infernale du roi Kastcheï',
-    tempo: '♩ = 168',
-    targetBpm: 168,
-    meter: '3/4',
-    clef: 'tenor',
-    unitsPerBeat: 4,      // a quarter is the printed beat; the unit is a sixteenth
-    beatsPerMeasure: 3,
-    // Two passages so far, and the bar numbers say which is which: the opening
-    // (1–12) and the col legno phrase (63–68).
-    measures: [
-      // mm 1–12. One chord, nine bars of rest, and the entry — the whole
-      // difficulty here is counting the nine, so they are written out one to a
-      // bar rather than as the part's nine-bar multirest.
-      //
-      // m 1 is a three-note chord struck at once, not rolled (non arpeg.
-      // possibile): A2 on the G string, G3 on the D, the open A3.
-      { n: 1, notes: [chord(2, 'A2', 'G3', 'A3'), rest(2), rest(4), rest(4)] },
-      ...Array.from({ length: 9 }, (unused, i) => ({ n: 2 + i, notes: [rest(12)] })),
-      // The entry: the octave A struck as a double stop, sfff, then pp at once.
-      { n: 11, notes: [chord(2, 'A2', 'A3'), sixteenth('A3'), sixteenth('A2'),
-                       ...octaveBeat(), ...octaveBeat()] },
-      { n: 12, notes: [...octaveBeat(), ...octaveBeat(), ...octaveBeat()] },
-
-      // mm 63–68: one system of the part and one phrase — col legno on a
-      // hammered G♯, the same G♯ answered normale and marcatissimo, then col
-      // legno again. Nearly every beat is the same limping cell, which is what
-      // makes the two normale bars of straight eighths land the way they do.
-      // In m 63 the rest stands in for the cell's own eighth, so the bar still limps.
-      { n: 63, notes: [eighthRest(), sixteenth(G), sixteenth(G), ...cell(G), ...cell(G)] },
-      { n: 64, notes: [...cell(G), ...cell(G), eighth(G), eighthRest()] },
-      { n: 65, notes: ['F4', 'G#4', 'C5', 'B4', 'G#4', 'B4'].map(eighth) },
-      { n: 66, notes: [...['D#5', 'D5', 'G#4', 'F4', 'B4'].map(eighth), eighthRest()] },
-      { n: 67, notes: [...cell(G), ...cell(G), ...cell(G)] },
-      { n: 68, notes: [...cell(G), ...cell(G), eighth(G), eighthRest()] },
-    ],
-  },
-  { id: 'berceuse', name: 'Berceuse', tempo: '♩ = 60' },
-  { id: 'final', name: 'Final', tempo: '𝅗𝅥 = 54' },
-];
-
-const PREFS_KEY = 'measure-practice:v3';
 
 let tempoBpm = 60;          // ♩ = , so a sixteenth is 15/tempo seconds
 let metronomeOn = true;
 let countIn = true;
 let loopOn = true;
 // What is selected: a movement, and a range of its measures (indices, inclusive).
-let movementIdx = MOVEMENTS.findIndex(m => (m.measures || []).length);
+let movementIdx = 0;
 let fromIdx = 0;
 let toIdx = 0;
 
@@ -119,7 +59,7 @@ let passTimers = [];        // pending rest highlights, cleared when playback st
 // --- the passage ------------------------------------------------------------
 
 function movement() {
-  return MOVEMENTS[movementIdx] || MOVEMENTS[0];
+  return PIECE.movements[movementIdx] || PIECE.movements[0] || {};
 }
 
 function measures() {
@@ -140,7 +80,7 @@ function measureUnits(measure) {
 // would drift against the metronome.
 function checkPassage() {
   const problems = [];
-  MOVEMENTS.filter(playable).forEach(m => {
+  PIECE.movements.filter(playable).forEach(m => {
     const want = m.unitsPerBeat * m.beatsPerMeasure;
     m.measures.forEach(measure => {
       const got = measureUnits(measure);
@@ -537,7 +477,7 @@ function control(id) {
 
 function selectMovement(index) {
   if (playing) stopPlayback();
-  movementIdx = Math.max(0, Math.min(index, MOVEMENTS.length - 1));
+  movementIdx = Math.max(0, Math.min(index, PIECE.movements.length - 1));
   fromIdx = 0;
   toIdx = passageAt(0).to;
   buildRangeOptions();
@@ -567,7 +507,7 @@ function buildMovementOptions() {
   const select = control('movement');
   if (!select) return;
   select.innerHTML = '';
-  MOVEMENTS.forEach((m, i) => {
+  PIECE.movements.forEach((m, i) => {
     const option = document.createElement('option');
     option.value = i;
     const bars = m.measures || [];
@@ -624,6 +564,10 @@ function syncControls() {
 
   const strip = control('strip');
   if (strip) strip.hidden = !has;
+  // Nothing to count through either: a lone dash under an empty movement reads
+  // as a broken counter rather than an empty one.
+  const counter = control('counter');
+  if (counter) counter.hidden = !has;
 
   // The printed tempo, shown next to the tempo box rather than enforced by it:
   // it's the number this movement is aimed at, and knowing how far off you are
@@ -637,9 +581,11 @@ function syncControls() {
   const state = control('movement-state');
   if (state) {
     const ranges = passages().map(p => `${list[p.from].n}–${list[p.to].n}`).join(', ');
+    const printed = here.tempo ? `printed tempo ${here.tempo}` : '';
     state.textContent = has
-      ? `${here.meter}, printed tempo ${here.tempo} — mm ${ranges} transcribed`
-      : `printed tempo ${here.tempo} — no measures transcribed yet, so there is nothing to play here`;
+      ? [here.meter, printed, `mm ${ranges} transcribed`].filter(Boolean).join(', ')
+      : [printed, 'no measures transcribed yet, so there is nothing to play here']
+          .filter(Boolean).join(' — ');
   }
 }
 
@@ -693,12 +639,7 @@ function initControls() {
   });
 
   const note = control('source-note');
-  if (note) {
-    note.innerHTML = 'Stravinsky, <i>L’Oiseau de feu</i> (1919 suite) — cello part, '
-      + 'Nieweg / McAlister edition (plate 22392), read from the part. '
-      + 'transcribed measures are engraved from <code>tools/scores/measure-practice.ly</code>; '
-      + 'the movements are listed as the part numbers them.';
-  }
+  if (note && PIECE.sourceNote) note.innerHTML = PIECE.sourceNote;
 }
 
 // --- prefs ------------------------------------------------------------------
@@ -723,7 +664,7 @@ function applyPrefs() {
   if (typeof p.metronome === 'boolean') metronomeOn = p.metronome;
   if (typeof p.countIn === 'boolean') countIn = p.countIn;
   if (typeof p.loop === 'boolean') loopOn = p.loop;
-  const m = MOVEMENTS.findIndex(x => x.id === p.movement);
+  const m = PIECE.movements.findIndex(x => x.id === p.movement);
   if (m >= 0) movementIdx = m;
   // Stored as bar numbers rather than indices: measures added in front of a
   // movement would otherwise silently shift the range you left selected.
@@ -738,31 +679,55 @@ function applyPrefs() {
   });
 }
 
-// A measure that doesn't add up is a bug in the table above, not in the
-// browser, and the page says so out loud rather than quietly playing a short
-// bar that drifts against the metronome.
-const passageProblems = checkPassage();
-if (passageProblems.length) {
-  const box = control('load-error');
-  const detail = control('load-error-detail');
-  if (box) box.hidden = false;
-  if (detail) detail.textContent = 'passage: ' + passageProblems.join('; ');
+// --- starting up -------------------------------------------------------------
+
+// Called by the piece's own script once it has its movements together. One
+// engine, one page per piece: the piece file holds the music and nothing else,
+// this file holds everything that isn't the music.
+function start(piece) {
+  PIECE = piece;
+  // Each piece remembers its own movement, range and tempo. Sharing one key
+  // would have a page open on a movement from a different work.
+  PREFS_KEY = `measure-practice:v3:${piece.id}`;
+
+  const title = document.getElementById('piece-title');
+  if (title) title.textContent = piece.title || '';
+  if (piece.title) document.title = `measure practice — ${piece.shortTitle || piece.title}`;
+
+  const problems = checkPassage();
+  if (problems.length) {
+    const box = control('load-error');
+    const detail = control('load-error-detail');
+    if (box) box.hidden = false;
+    if (detail) detail.textContent = 'passage: ' + problems.join('; ');
+  }
+
+  movementIdx = Math.max(0, PIECE.movements.findIndex(m => playable(m)));
+  fromIdx = 0;
+  // Start inside the first passage rather than across the whole movement: the
+  // measures either side of a gap are not neighbours.
+  toIdx = passageAt(0).to;
+
+  applyPrefs();
+  buildMovementOptions();
+  buildRangeOptions();
+  buildCounter();
+  clearCount();
+  buildScore();
+  buildStrip();
+  initControls();
+  syncControls();
+
+  // Reached only if everything above ran. The page's load handler shows a
+  // visible notice when this flag is missing, which is the only way a phone can
+  // tell a script that failed to fetch from a practice tool that's simply
+  // broken.
+  window.__measureReady = true;
 }
 
-// Start inside the first passage rather than across the whole movement: the
-// measures either side of a gap are not neighbours.
-toIdx = passageAt(0).to;
-applyPrefs();
-buildMovementOptions();
-buildRangeOptions();
-buildCounter();
-clearCount();
-buildScore();
-buildStrip();
-initControls();
-syncControls();
-
-// Reached only if everything above ran. The page's load handler shows a visible
-// notice when this flag is missing, which is the only way a phone can tell a
-// script that failed to fetch from a practice tool that's simply broken.
-window.__measureReady = true;
+window.Practice = {
+  start,
+  // The note builders, so a piece file can write its music in something close
+  // to the language of the page it came off.
+  eighth, sixteenth, rest, eighthRest, chord,
+};
