@@ -7,6 +7,7 @@
 //   AudioKit.createInstrument({ name, timbre, expression }) -> { playSequence, ... }
 //   AudioKit.instruments.cello  -> the natural cello (default melodic voice)
 //   AudioKit.playSequence(baseMidi, semitoneOffsets, opts)  (legacy plain voice)
+//   AudioKit.click(when, accent) / AudioKit.hit(when, accent)  (tick / rhythm note)
 //   AudioKit.createDrone()  -> { start, stop, retune, setRoot, setFifth, setVolume, playing }
 const AudioKit = (() => {
   const FIFTH_RATIO = 1.5;
@@ -235,6 +236,56 @@ const AudioKit = (() => {
     const ctx = getSeqCtx();
     if (ctx.state !== 'running') { try { ctx.resume(); } catch (e) {} }
     scheduleClick(ctx, Math.max(when, ctx.currentTime), !!accent);
+  }
+
+  // A rhythm note: the woodblock the rhythm page claps with. Woodier and a
+  // touch louder than the metronome tick, because the two sound together —
+  // a note landing on a beat has to stay tellable from the beat it lands on.
+  // A triangle body dropping a fifth in 20ms over a band-passed noise knock.
+  // Registered in activeVoices (with the noise as a companion) so
+  // stopSequence() silences hits still pending in the future.
+  function scheduleHit(ctx, t, accent) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(accent ? 1180 : 940, t);
+    osc.frequency.exponentialRampToValueAtTime(accent ? 660 : 540, t + 0.02);
+    const peak = accent ? 0.5 : 0.38;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(peak, t + 0.002);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.085);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.1);
+
+    const len = Math.max(1, Math.floor(ctx.sampleRate * 0.03));
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    const noise = ctx.createBufferSource();
+    noise.buffer = buf;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = accent ? 2500 : 2000;
+    bp.Q.value = 1.2;
+    const ng = ctx.createGain();
+    ng.gain.setValueAtTime(accent ? 0.3 : 0.22, t);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
+    noise.connect(bp).connect(ng).connect(ctx.destination);
+    noise.start(t);
+    noise.stop(t + 0.035);
+
+    const rec = { osc, gain, extra: [noise] };
+    activeVoices.push(rec);
+    osc.onended = () => { const k = activeVoices.indexOf(rec); if (k >= 0) activeVoices.splice(k, 1); };
+  }
+
+  // One rhythm note at absolute time `when`, on the same clock as click() and
+  // currentTime(), so a rhythm and the metronome under it stay in step.
+  function hit(when, accent) {
+    const ctx = getSeqCtx();
+    if (ctx.state !== 'running') { try { ctx.resume(); } catch (e) {} }
+    scheduleHit(ctx, Math.max(when, ctx.currentTime), !!accent);
   }
 
   // A brief brightening of the lowpass on a note's attack — the "bite" of a
@@ -755,7 +806,7 @@ const AudioKit = (() => {
 
   return {
     FIFTH_RATIO, midiToFreq, pitchToMidi, midiToName,
-    playSequence, stopSequence, currentTime, click, prepareOutput,
+    playSequence, stopSequence, currentTime, click, hit, prepareOutput,
     createInstrument, instruments: { cello },
     createDrone, createPolySynth, resume: resumeCtxs,
   };

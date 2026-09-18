@@ -235,6 +235,55 @@ copy of a copyrighted part published on the open web. Read the measures you need
 off the part on your stand, keep them to what a rehearsal actually needs, and
 leave the rest out.
 
+## The rhythm builder
+
+`rhythm.html` + `rhythm.js`: one rhythm, built a measure at a time, engraved
+on a one-line staff and clapped back on a woodblock over the metronome. A
+range of measures can be looped, and the speed taken down to whatever the
+hands can hold — the marked tempo is the goal, not the ceiling (the slider
+runs to 125% of it, and **mark** snaps back).
+
+The rhythms are data at the top of `rhythm.js`:
+
+```js
+{
+  id: 'rhythm-1',
+  name: 'rhythm 1',
+  meter: [4, 4],
+  beatsPerMeasure: 4,
+  beatUnit: '4',          // what the metronome and the counter count
+  targetBpm: 192,         // the mark: ♩ = 192
+  measures: [
+    { n: 1, events: [note('8'), rest('8'), rest('8t'), rest('8t'), note('8t'),
+                     rest('4'), note('8'), rest('8')] },
+  ],
+}
+```
+
+**To add the next measure, append to `measures`** — nothing else changes; the
+page picks up the new bar, the range pickers grow, and the engraving re-flows.
+
+Durations are strings: `1` whole, `2` half, `4` quarter, `8` eighth, `16`
+sixteenth, `32`, with `.` for a dot and a trailing `t` for a triplet member
+(`8t` is a triplet eighth). Internally everything counts in **ticks**, 24 to
+the quarter, so eighths (12), triplet eighths (8) and sixteenths (6) are whole
+numbers and nothing rounds. `checkRhythms()` reports any bar that doesn't add
+up to its meter on the page rather than letting it play as something nobody
+wrote.
+
+### Why the notation is drawn here and not by LilyPond
+
+The song and measure-practice scores are engraved by LilyPond into SVG files
+(see *Assets*). This page draws its own, with Bravura glyphs, because every
+note has to be a **live element**: the one sounding lights up as it passes, and
+the measures on show change with the range. The engraver covers what rhythm
+needs — noteheads and rests of every value, dots, beams (with secondary beams
+and stubs), flags, triplet brackets, a time signature and barlines — and lays
+bars out proportionally, as many per system as the width can hold.
+
+The sound is `AudioKit.hit()` in `audio.js`, a woodblock on the same clock as
+the metronome tick so a note landing on a beat stays tellable from it.
+
 ## Assets
 
 Per-song score images live under `scores/<slug>/` (e.g.
