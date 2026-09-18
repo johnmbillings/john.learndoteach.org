@@ -191,6 +191,50 @@ travels, and arrives before the next note is bowed, with the tone easing as the
 hand moves. `artic` lets the note after it re-articulate as a fresh bow on a new
 string. Everything else on the site passes no shape and is unaffected.
 
+## The measure-practice pages
+
+One engine, one page per piece. `practice.js` is everything that isn't the
+music: the movement and measure-range pickers, playback, the metronome and
+count-in, the bar-and-beat counter, and the strip of chips that lights up as it
+plays. A **piece file** holds the music and ends by calling `Practice.start()`
+with it; a page loads the engine and then one piece file.
+
+| page | piece file | piece |
+|---|---|---|
+| `measure-practice.html` | `firebird-practice.js` | Stravinsky, *L'Oiseau de feu* (1919 suite), cello |
+| `barber.html` | `barber-practice.js` | Barber, Violin Concerto Op. 14, cello |
+
+A piece is `{ id, title, shortTitle?, sourceNote?, movements }`, and a movement
+is `{ id, name, tempo?, targetBpm?, meter?, unitsPerBeat, beatsPerMeasure,
+measures? }`. Every movement of the work is listed, transcribed or not — a
+dropdown that hid the empty ones would also hide how much of a part is still
+unread — and a movement with no `measures` says so and sits out.
+
+Notes are written in sixteenths: `eighth('A2')`, `sixteenth('A3')`,
+`rest(12)` for a bar of 3/4, `chord(2, 'A2', 'G3', 'A3')` for a stopped chord.
+A movement's measures may come in **passages** with gaps between them (mm 1–12
+and 63–68 of the Danse infernale); each passage is engraved separately and a
+range can't reach across a gap. `checkPassage()` refuses to let a measure that
+doesn't add up to a bar pass silently.
+
+A transcribed passage exists twice — engraved in `tools/scores/*.ly`, and as
+notes in the piece file — so **edit the two together**. See
+`tools/scores/README.md` for the engraving side.
+
+### Copyright
+
+The Firebird suite (1919) is public domain in the US, so its notes can be
+transcribed and engraved here freely; the *edition* the part comes from is not,
+which is why no scan of it is in this repository.
+
+**Barber's Violin Concerto is not.** Written 1939, premiered 1941, published by
+G. Schirmer and protected in the US into the late 2030s; the orchestral parts
+are rental-only and it is not on IMSLP. Nothing of it can be fetched, and this
+repository is a public website, so anything added to `barber-practice.js` is a
+copy of a copyrighted part published on the open web. Read the measures you need
+off the part on your stand, keep them to what a rehearsal actually needs, and
+leave the rest out.
+
 ## Assets
 
 Per-song score images live under `scores/<slug>/` (e.g.
