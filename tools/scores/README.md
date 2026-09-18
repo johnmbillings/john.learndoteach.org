@@ -44,23 +44,33 @@ this directory.
   the builder removes the `Time_signature_engraver`; beams are manual, since
   neither the ♪♬ cell nor m 65's six-eighth beam is what 3/4 would do by itself.
 
-- `barber.ly` — Barber, Violin Concerto Op. 14, III, mm 3–4, from the orchestra
+- `barber.ly` — Barber, Violin Concerto Op. 14, III, mm 3–8, from the orchestra
   cello part rented from G. Schirmer. **The concerto is in copyright** (published
   1941; protected in the US into the late 2030s, longer in Europe), which is why
   it is a file of its own rather than another block in `measure-practice.ly`:
   what is engraved here is a reproduction of a rented part on a public website,
-  and the boundary belongs somewhere someone will see it. Two measures are what
+  and the boundary belongs somewhere someone will see it. Six measures are what
   is there — a phrase drilled before a rehearsal, not a movement published.
   Absolute octaves and one measure per line, like the rest.
 
-  III is 4/4 at ♩ = 192, and both bars are the same double stop, E2 under A2,
-  struck staccato. m 3 is the cellos taking the mutes off (*senza sord.*): sf on
-  the downbeat, then the answer pp on the last third of a triplet whose first
-  two thirds are rests, then a quarter rest and the stop once more. m 4 drops the
-  triplet — eight plain eighths, of which only the third and the seventh sound,
-  squarely on beats 2 and 4. Both bars answer on those two beats; m 3 pushes the
-  beat-2 entry late, to the triplet's last third, and m 4 puts it on the beat. m 4's staccato dots are written to match m 3 rather
-  than read off the part.
+  III is 4/4 at ♩ = 192. mm 3–6 are all one double stop, E2 under A2, struck
+  staccato, and only the placing of the entries changes. m 3 is the cellos
+  taking the mutes off (*senza sord.*): sf on the downbeat, then the answer pp
+  on the last third of a triplet whose first two thirds are rests, then a
+  quarter rest and the stop once more. m 4 drops the triplet — eight plain
+  eighths, of which only the third and the seventh sound, squarely on beats 2
+  and 4. Both bars answer on those two beats; m 3 pushes the beat-2 entry late,
+  to the triplet's last third, and m 4 puts it on the beat.
+  mm 5–6 are identical to each other and move the entries again, onto beats 1
+  and 3. m 7 keeps that rhythm and drops the stop for two single notes, E2 and
+  F2 a half step apart. m 8 returns to m 3's rhythm under a different stop: A2
+  holds on top and the note beneath falls from E2 to D2, a fourth becoming a
+  fifth.
+
+  Only m 3 was read off a photograph; mm 4–8 were written from a description of
+  their rhythm and pitches. Their staccato dots match m 3 rather than the part,
+  their empty beats are spelled as eighth rests rather than quarter rests, and
+  no dynamic is written after m 3's pp.
 
   **Adding a passage** is a block in one of these sources plus a row in
   `PRACTICE_MOVEMENTS` in the builder (source path, LilyPond variable, movement

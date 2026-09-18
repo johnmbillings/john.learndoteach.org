@@ -16,7 +16,7 @@
 // a movement is another. Whoever adds measures here should decide how much
 // belongs on a public site, and keep the answer small.
 //
-// Two measures are on the page so far — III, mm 3–4 — and that is the scale
+// Six measures are on the page so far — III, mm 3–8 — and that is the scale
 // the decision above was made at. Their engraving lives in
 // tools/scores/barber.ly, kept apart from the public-domain sources for the
 // same reason; the two describe the same bars and have to be edited together.
@@ -37,7 +37,12 @@
   // what the engine counts by. The plain `eighth()` and `sixteenth()` builders
   // are hard-wired to the sixteenth grid and would be wrong here, so this file
   // takes only the two builders that spell their duration out.
-  const stop = (units) => chord(units, 'E2', 'A2');   // the bar's one double stop
+  //
+  // Every double stop in these bars has A2 on top and only the note under it
+  // moves — E2 through mm 3–6, down a step to D2 in m 8. m 7 is the exception:
+  // two single notes, no stop at all.
+  const stop = (units, under) => chord(units, under, 'A2');
+  const single = (units, pitch) => chord(units, pitch);
 
   Practice.start({
     id: 'barber',
@@ -45,7 +50,7 @@
     shortTitle: 'barber',
     sourceNote: 'Barber, <i>Concerto for Violin and Orchestra</i>, Op. 14 (1939) — '
       + 'the orchestra cello part, rented from G. Schirmer. the concerto is still '
-      + 'in copyright, so what is here is two measures read off the part on your '
+      + 'in copyright, so what is here is six measures read off the part on your '
       + 'stand — a phrase to drill before a rehearsal, and no more than that.',
     movements: [
       { id: 'i-allegro', name: 'I. Allegro' },
@@ -57,7 +62,7 @@
         targetBpm: 192,
         meter: '4/4',
         clef: 'bass',
-        unitsPerBeat: 6,      // a quarter is the printed beat; the unit is a sixth of it
+        unitsPerBeat: 6,      // a quarter is the beat; the unit is a sixth of it
         beatsPerMeasure: 4,
         measures: [
           // m 3, where the cellos take the mutes off (senza sord.). Every note
@@ -68,10 +73,10 @@
           // comes pp on the last of them, off the beat and quiet, between a sf
           // downbeat and a bar's worth of silence either side of it.
           { n: 3, notes: [
-              stop(3), rest(3),               // beat 1: sf, then an eighth rest
-              rest(2), rest(2), stop(2),      // beat 2: the triplet, pp on its third
-              rest(6),                        // beat 3: a quarter rest
-              stop(3), rest(3),               // beat 4: the stop again, then a rest
+              stop(3, 'E2'), rest(3),             // beat 1: sf, then an eighth rest
+              rest(2), rest(2), stop(2, 'E2'),    // beat 2: the triplet, pp on its 3rd
+              rest(6),                            // beat 3: a quarter rest
+              stop(3, 'E2'), rest(3),             // beat 4: the stop, then a rest
           ] },
           // m 4 is the bar in plain eighths: eight of them, and only the third
           // and the seventh sound — squarely on beats 2 and 4. Both bars answer
@@ -80,8 +85,39 @@
           // in the same place in both, which is what makes the difference on
           // beat 2 something you can hear rather than count.
           { n: 4, notes: [
-              rest(3), rest(3), stop(3), rest(3),     // beats 1–2: the stop on the 3rd eighth
-              rest(3), rest(3), stop(3), rest(3),     // beats 3–4: and again on the 7th
+              rest(3), rest(3), stop(3, 'E2'), rest(3),   // the 3rd eighth sounds
+              rest(3), rest(3), stop(3, 'E2'), rest(3),   // and the 7th
+          ] },
+          // mm 5 and 6 are identical, and move the answer once more: onto beats
+          // 1 and 3, both square on the beat. Across the four bars the entry
+          // walks — late in beat 2, then on beat 2, then on beat 1 — while the
+          // stop under it never changes. There is nothing here to find with the
+          // left hand, only a place to be, which is why the bars are worth
+          // looping as a run rather than one at a time.
+          ...[5, 6].map(n => ({ n, notes: [
+              stop(3, 'E2'), rest(3), rest(3), rest(3),   // beat 1, then nothing
+              stop(3, 'E2'), rest(3), rest(3), rest(3),   // beat 3, the same again
+          ] })),
+          // m 7 keeps that rhythm and drops the double stop: two single notes,
+          // E2 on beat 1 and F2 on beat 3 — a half step, the smallest move in
+          // the passage and the one most easily played flat. With the A2 gone
+          // there is no open-ish anchor above it either, so the semitone is
+          // exposed.
+          { n: 7, notes: [
+              single(3, 'E2'), rest(3), rest(3), rest(3),   // beat 1
+              single(3, 'F2'), rest(3), rest(3), rest(3),   // beat 3, a half step up
+          ] },
+          // m 8 goes back to m 3's rhythm — the triplet, its late entry and
+          // all — under a different stop: A2 stays on top and the note beneath
+          // drops from E2 to D2, so the fourth becomes a fifth. Coming after
+          // four bars of the same stop, that is the bar where the left hand has
+          // something to do again, and it arrives on the rhythm that was hardest
+          // to place the first time.
+          { n: 8, notes: [
+              stop(3, 'D2'), rest(3),             // beat 1
+              rest(2), rest(2), stop(2, 'D2'),    // beat 2: the triplet's late entry
+              rest(6),                            // beat 3
+              stop(3, 'D2'), rest(3),             // beat 4
           ] },
         ],
       },
