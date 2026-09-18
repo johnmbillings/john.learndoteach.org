@@ -44,14 +44,21 @@ this directory.
   the builder removes the `Time_signature_engraver`; beams are manual, since
   neither the ♪♬ cell nor m 65's six-eighth beam is what 3/4 would do by itself.
 
-- `barber.ly` — Barber, Violin Concerto Op. 14, III, m 3, from the orchestra
-  cello part rented from G. Schirmer. **The concerto is in copyright** (published
-  1941; protected in the US into the late 2030s, longer in Europe), which is why
-  it is a file of its own rather than another block in `measure-practice.ly`:
-  what is engraved here is a reproduction of a rented part on a public website,
-  and the boundary belongs somewhere someone will see it. One measure is what is
-  there, and one measure is the point — a bar drilled before a rehearsal, not a
-  movement published. Absolute octaves and one measure per line, like the rest.
+- `barber.ly` — Barber, Violin Concerto Op. 14: III, m 3 and I, mm 50–59, from
+  the orchestra cello part rented from G. Schirmer. **The concerto is in
+  copyright** (published 1941; protected in the US into the late 2030s, longer in
+  Europe), which is why it is a file of its own rather than another block in
+  `measure-practice.ly`: what is engraved here is a reproduction of a rented part
+  on a public website, and the boundary belongs somewhere someone will see it. A
+  bar and a ten-bar passage is what is there, and that is the point — passages
+  drilled before a rehearsal, not a movement published. Absolute octaves and one
+  measure per line, like the rest.
+
+  I, mm 50–59 is rehearsal 4 to the bar before rehearsal 5: 4/4, one sharp, bass
+  clef, an accompaniment of short notes and rests under the solo. The part prints
+  no metronome mark there ("a tempo" points back at the movement's own), so the
+  movement carries no printed tempo on the page. Beams are manual because the
+  1941 engraving beams by the half bar, which is not what 4/4 does by itself.
 
   III is 4/4 at ♩ = 192. The bar is the cellos taking the mutes off
   (*senza sord.*) on one double stop, E2 under A2, struck staccato: sf on the
