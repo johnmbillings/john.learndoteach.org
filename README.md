@@ -221,6 +221,15 @@ A transcribed passage exists twice — engraved in `tools/scores/*.ly`, and as
 notes in the piece file — so **edit the two together**. See
 `tools/scores/README.md` for the engraving side.
 
+The note being played lights up twice too: as a chip in the strip, and as a band
+over the engraving. The engraving is an `<img>` and nothing inside it can be
+restyled, so the builder stamps each notehead and rest in the SVG with the moment
+it falls on and marks each system's staff lines; `practice.js` reads those out of
+the file and positions a translucent band, as wide as the note is long. The
+stamped moments in time order are the passage's events in reading order, so they
+pair off with the notes in the piece file one for one — and if they ever stop
+pairing off, the band stays away rather than pointing at the wrong bar.
+
 ### Copyright
 
 The Firebird suite (1919) is public domain in the US, so its notes can be

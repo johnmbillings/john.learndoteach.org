@@ -102,6 +102,17 @@ whichever passage the selected measures fall in and lets the range be picked out
 of it, rather than a picture per pair of measures. The bar number a block starts
 on lives in the table, since the music carries no `\set` for it.
 
+A practice engraving also carries a little machine-readable marking, so the page
+can light up the note it is playing. Every notehead and rest is stamped with the
+moment it falls on — `<g class="ev" data-at="0.875">` — and each system's staff
+lines are wrapped in `<g class="st">`. Read in time order the stamped moments are
+the passage's events in reading order (a chord's heads share one moment; a rest
+has one too), and the staff lines say where each system sits and where it ends.
+That is everything the page needs to lay a band over the image; it checks the
+two lists are the same length first, and shows no band at all rather than one
+over the wrong bar. The stamping is `\override … output-attributes`, which the
+SVG backend turns into attributes on the group it draws.
+
 The source is in **absolute octaves**, so every measure renders on its own —
 ranges that don't start at m. 1 simply set `Score.currentBarNumber`, with no
 need to parse earlier measures for pitch context. (This replaced an older

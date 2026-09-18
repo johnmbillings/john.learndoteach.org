@@ -90,10 +90,21 @@
       background: #fafafa;
       border-radius: 4px;
     }
+    #score-frame { position: relative; }
     #score-wrapper img {
       width: 100%;
       height: auto;
       display: block;
+    }
+    /* The note being played, lit up in the engraving. The band is as wide as
+       the note is long, like the chips below; `multiply` keeps the ink black
+       and tints only the paper, so the notes stay readable under it. */
+    #score-mark {
+      position: absolute;
+      background: #9cd8ff;
+      mix-blend-mode: multiply;
+      border-radius: 2px;
+      pointer-events: none;
     }
 
     /* --- the count: which bar, which beat --- */
@@ -333,7 +344,10 @@
   </div>
 
   <div id="score-wrapper">
-    <img id="score-img" alt="the measures being practised">
+    <div id="score-frame">
+      <img id="score-img" alt="the measures being practised">
+      <div id="score-mark" hidden></div>
+    </div>
   </div>
 
   <div id="counter">
@@ -406,7 +420,7 @@
        moment the two disagree about what controls exist. Bump ?v= whenever
        either file changes in a way the other depends on. -->
   <script src="audio.js?v=4"></script>
-  <script src="practice.js?v=1"></script>
+  <script src="practice.js?v=2"></script>
   <script src="barber-practice.js?v=3"></script>
 </body>
 </html>

@@ -197,11 +197,160 @@ function buildScore() {
   if (!img || !wrapper) return;
   const src = scoreSrc();
   wrapper.hidden = !src;
-  if (!src) return;
+  if (!src) {
+    // A movement with nothing transcribed has no engraving and so no bands.
+    scoreMarks = null;
+    scoreMarksFor = null;
+    markScore(-1);
+    return;
+  }
   const list = measures();
   const p = passageAt(fromIdx);
   img.src = src;
   img.alt = `${movement().name}, measures ${list[p.from].n} to ${list[p.to].n}`;
+  if (src !== scoreMarksFor) loadScoreMarks(src);
+}
+
+// --- lighting up the note in the score ---------------------------------------
+// The engraving is an <img>, so nothing inside it can be restyled. What can be
+// done is lay a band over it, and for that the page has to know where each note
+// sits on the page. The builder stamps every notehead and rest in the SVG with
+// the moment it falls on, and rules each system's staff lines with a class of
+// their own; that is enough to work out the rest here.
+//
+// Read in time order, the stamped moments are the passage's events in reading
+// order — a chord's heads share one moment, and a rest has one too — so they
+// pair off with the notes in the table one for one, and the two lists don't
+// have to agree about anything else. If they ever stop pairing off, the band
+// stays away: a band over the wrong bar is worse than none.
+
+let scoreMarks = null;      // one band per event, in % of the engraving
+let scoreMarksFor = null;   // the engraving they were read from
+
+const MARK_REACH = 2.6;     // the band always covers this much staff, at least
+const MARK_ROOM = 1.0;      // and this much air above and below the notes in it
+const MARK_LEAD = 0.9;      // how far left of a notehead the band starts
+
+function translateOf(el) {
+  const m = el && /translate\(\s*(-?[\d.]+)[\s,]+(-?[\d.]+)/.exec(el.getAttribute('transform') || '');
+  return m ? { x: Number(m[1]), y: Number(m[2]) } : null;
+}
+
+function readMarks(doc) {
+  const box = (doc.documentElement.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
+  if (box.length !== 4 || box.some(v => !Number.isFinite(v))) return null;
+  const [vx, vy, vw, vh] = box;
+
+  // One group per system, holding the five ruled lines: each is drawn at x = 0
+  // and translated to its own height, so the lines give both the middle of the
+  // staff and — by their length — where the system stops.
+  const systems = [...doc.querySelectorAll('g.st')].map(staff => {
+    const ys = [];
+    const ends = [];
+    staff.querySelectorAll('g[transform]').forEach(g => {
+      const at = translateOf(g);
+      const line = g.querySelector('line');
+      if (!at || !line) return;
+      ys.push(at.y);
+      ends.push(at.x + Number(line.getAttribute('x2')));
+    });
+    return ys.length ? { mid: (Math.min(...ys) + Math.max(...ys)) / 2, right: Math.max(...ends) } : null;
+  }).filter(Boolean).sort((a, b) => a.mid - b.mid);
+  if (!systems.length) return null;
+
+  // A moment's leftmost glyph is where its band starts: a chord whose notes are
+  // a second apart has one head pushed to the side, and the band should still
+  // begin at the column rather than at the outlier. The heights are kept too,
+  // for how far the band has to reach.
+  const columns = new Map();
+  doc.querySelectorAll('g.ev[data-at]').forEach(ev => {
+    const at = Number(ev.getAttribute('data-at'));
+    const where = translateOf(ev.querySelector('g[transform]'));
+    if (!Number.isFinite(at) || !where) return;
+    const seen = columns.get(at);
+    if (!seen) columns.set(at, { x: where.x, top: where.y, bottom: where.y });
+    else {
+      seen.x = Math.min(seen.x, where.x);
+      seen.top = Math.min(seen.top, where.y);
+      seen.bottom = Math.max(seen.bottom, where.y);
+    }
+  });
+  const order = [...columns.entries()].sort((a, b) => a[0] - b[0]).map(entry => entry[1]);
+  if (!order.length) return null;
+
+  // Which system each event landed in. They are in time order, so the only
+  // thing that can move one to the next system is its x going backwards.
+  let system = 0;
+  order.forEach((ev, i) => {
+    if (i && ev.x < order[i - 1].x && system < systems.length - 1) system += 1;
+    ev.system = system;
+    const here = systems[system];
+    here.top = Math.min(here.top === undefined ? ev.top : here.top, ev.top);
+    here.bottom = Math.max(here.bottom === undefined ? ev.bottom : here.bottom, ev.bottom);
+  });
+
+  // One height per system rather than one per note: a band that grew and shrank
+  // from note to note would jump about, and what it is doing is marking a column
+  // in the music. It reaches past whatever is highest and lowest in its own
+  // system — ledger lines and all — and never less than the staff itself.
+  systems.forEach(sys => {
+    sys.from = Math.min(sys.mid - MARK_REACH, (sys.top === undefined ? sys.mid : sys.top) - MARK_ROOM);
+    sys.to = Math.max(sys.mid + MARK_REACH, (sys.bottom === undefined ? sys.mid : sys.bottom) + MARK_ROOM);
+  });
+
+  // Each band runs to the next event, or to the end of its system — so it is as
+  // wide as the note is long, which is what the chips under the score do too.
+  return order.map((ev, i) => {
+    const next = order[i + 1];
+    const sys = systems[ev.system];
+    const left = ev.x - MARK_LEAD;
+    const right = next && next.system === ev.system ? next.x - MARK_LEAD : sys.right;
+    return {
+      left: ((left - vx) / vw) * 100,
+      width: (Math.max(right - left, 0.6) / vw) * 100,
+      top: ((sys.from - vy) / vh) * 100,
+      height: ((sys.to - sys.from) / vh) * 100,
+    };
+  });
+}
+
+async function loadScoreMarks(src) {
+  scoreMarks = null;
+  scoreMarksFor = src;
+  markScore(-1);
+  try {
+    const response = await fetch(src);
+    if (!response.ok) return;
+    const doc = new DOMParser().parseFromString(await response.text(), 'image/svg+xml');
+    if (doc.querySelector('parsererror')) return;
+    const marks = readMarks(doc);
+    const p = passageAt(fromIdx);
+    const events = measures().slice(p.from, p.to + 1)
+      .reduce((total, measure) => total + measure.notes.length, 0);
+    if (scoreMarksFor === src && marks && marks.length === events) scoreMarks = marks;
+  } catch (err) {
+    // The strip still lights up; the band over the score is the bonus.
+  }
+}
+
+// The strip counts notes from the start of the selection, the engraving from
+// the start of the passage — this is the difference between the two.
+function passageOffset() {
+  const p = passageAt(fromIdx);
+  return measures().slice(p.from, fromIdx)
+    .reduce((total, measure) => total + measure.notes.length, 0);
+}
+
+function markScore(i) {
+  const mark = document.getElementById('score-mark');
+  if (!mark) return;
+  const span = scoreMarks && scoreMarks[i];
+  mark.hidden = !span;
+  if (!span) return;
+  mark.style.left = `${span.left}%`;
+  mark.style.width = `${span.width}%`;
+  mark.style.top = `${span.top}%`;
+  mark.style.height = `${span.height}%`;
 }
 
 // One chip per note, grouped by measure and numbered, each chip as wide as the
@@ -276,12 +425,14 @@ function clearCount() {
 
 function clearHighlight() {
   document.querySelectorAll('#strip .sounding').forEach(el => el.classList.remove('sounding'));
+  markScore(-1);
 }
 
 function highlight(i) {
-  clearHighlight();
+  document.querySelectorAll('#strip .sounding').forEach(el => el.classList.remove('sounding'));
   const el = document.querySelector(`#strip [data-note="${i}"]`);
   if (el) el.classList.add('sounding');
+  markScore(i + passageOffset());
 }
 
 // --- playback ---------------------------------------------------------------
