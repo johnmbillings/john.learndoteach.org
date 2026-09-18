@@ -1,9 +1,6 @@
 // Barber, Violin Concerto Op. 14, cello part — the music for barber.html.
 // The engine is practice.js; this file is only the notes.
 //
-// There are no notes in it yet, and getting them is not the usual problem of
-// finding time to transcribe.
-//
 // THE CONCERTO IS IN COPYRIGHT. Barber finished it in 1939; it was premiered in
 // 1941 and published by G. Schirmer, who still hold it — in the United States a
 // work published then runs 95 years from publication, so it is protected into
@@ -19,6 +16,11 @@
 // a movement is another. Whoever adds measures here should decide how much
 // belongs on a public site, and keep the answer small.
 //
+// One measure is on the page so far — III, m 3 — and that is the scale the
+// decision above was made at. Its engraving lives in tools/scores/barber.ly,
+// kept apart from the public-domain sources for the same reason; the two
+// describe the same bar and have to be edited together.
+//
 // The movement headings below are Barber's own, and are facts about the work
 // rather than any of its music.
 //
@@ -27,7 +29,15 @@
 // scripts on one page share that scope.
 
 (() => {
-  const { eighth, sixteenth, rest, eighthRest, chord } = Practice;
+  const { rest, chord } = Practice;
+
+  // III counts in sixths of a beat rather than sixteenths: m 3 puts a triplet
+  // against straight eighths, and a unit has to divide both. So an eighth is 3
+  // units, a triplet eighth 2, a quarter 6 — see `unitsPerBeat` below, which is
+  // what the engine counts by. The plain `eighth()` and `sixteenth()` builders
+  // are hard-wired to the sixteenth grid and would be wrong here, so this file
+  // takes only the two builders that spell their duration out.
+  const stop = (units) => chord(units, 'E2', 'A2');   // the bar's one double stop
 
   Practice.start({
     id: 'barber',
@@ -35,12 +45,36 @@
     shortTitle: 'barber',
     sourceNote: 'Barber, <i>Concerto for Violin and Orchestra</i>, Op. 14 (1939) — '
       + 'the orchestra cello part, rented from G. Schirmer. the concerto is still '
-      + 'in copyright, so nothing of it is reproduced here: any measures added to '
-      + 'this page have to be read off the part on your stand, and kept short.',
+      + 'in copyright, so what is here is one measure read off the part on your '
+      + 'stand — a bar to drill before a rehearsal, and no more than that.',
     movements: [
       { id: 'i-allegro', name: 'I. Allegro' },
       { id: 'ii-andante', name: 'II. Andante' },
-      { id: 'iii-presto', name: 'III. Presto in moto perpetuo' },
+      {
+        id: 'iii-presto',
+        name: 'III. Presto in moto perpetuo',
+        tempo: '♩ = 192',
+        targetBpm: 192,
+        meter: '4/4',
+        clef: 'bass',
+        unitsPerBeat: 6,      // a quarter is the printed beat; the unit is a sixth of it
+        beatsPerMeasure: 4,
+        measures: [
+          // m 3, where the cellos take the mutes off (senza sord.). Every note
+          // in the bar is the same double stop — E2 on the C string under A2 on
+          // the G — struck staccato and let go, so nothing here is a question
+          // of pitch. What has to be learned is where the second one falls: the
+          // bar's one triplet has rests on its first two thirds, and the answer
+          // comes pp on the last of them, off the beat and quiet, between a sf
+          // downbeat and a bar's worth of silence either side of it.
+          { n: 3, notes: [
+              stop(3), rest(3),               // beat 1: sf, then an eighth rest
+              rest(2), rest(2), stop(2),      // beat 2: the triplet, pp on its third
+              rest(6),                        // beat 3: a quarter rest
+              stop(3), rest(3),               // beat 4: the stop again, then a rest
+          ] },
+        ],
+      },
     ],
   });
 

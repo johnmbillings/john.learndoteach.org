@@ -1,8 +1,8 @@
 # Score builder
 
 Renders the SVG scores the site displays — the per-loop scores for the song
-page, and the passage the measure-practice page drills — from the LilyPond
-sources in this directory.
+page, and the passages the practice pages drill — from the LilyPond sources in
+this directory.
 
 ## Sources
 - `allemande.ly` — Bach Cello Suite No. 1, Allemande (BWV 1007). Forked from
@@ -44,16 +44,32 @@ sources in this directory.
   the builder removes the `Time_signature_engraver`; beams are manual, since
   neither the ♪♬ cell nor m 65's six-eighth beam is what 3/4 would do by itself.
 
-  **Adding a movement** is a block here plus a row in `PRACTICE_MOVEMENTS` in
-  the builder (LilyPond variable, movement id, first bar number), plus its
-  measures in the `MOVEMENTS` table in `measure-practice.js`. The page works the
-  SVG's name out from the movement id and the bar range, so no third list has to
-  agree.
+- `barber.ly` — Barber, Violin Concerto Op. 14, III, m 3, from the orchestra
+  cello part rented from G. Schirmer. **The concerto is in copyright** (published
+  1941; protected in the US into the late 2030s, longer in Europe), which is why
+  it is a file of its own rather than another block in `measure-practice.ly`:
+  what is engraved here is a reproduction of a rented part on a public website,
+  and the boundary belongs somewhere someone will see it. One measure is what is
+  there, and one measure is the point — a bar drilled before a rehearsal, not a
+  movement published. Absolute octaves and one measure per line, like the rest.
 
-  The notes are duplicated between the `.ly` and `measure-practice.js` —
+  III is 4/4 at ♩ = 192. The bar is the cellos taking the mutes off
+  (*senza sord.*) on one double stop, E2 under A2, struck staccato: sf on the
+  downbeat, then the answer pp on the last third of a triplet whose first two
+  thirds are rests, then a quarter rest and the stop once more.
+
+  **Adding a passage** is a block in one of these sources plus a row in
+  `PRACTICE_MOVEMENTS` in the builder (source path, LilyPond variable, movement
+  id, first bar number), plus its measures in the piece file the page loads —
+  `firebird-practice.js`, `barber-practice.js`. The page works the SVG's name out
+  from the movement id and the bar range, so no third list has to agree. All the
+  engravings land in `scores/measure-practice/`, whichever source they came from,
+  because the pages share the directory.
+
+  The notes are duplicated between the `.ly` and the piece file —
   **edit the two together**, or the page will play something it isn't showing.
-  That file checks each measure adds up to a bar and says so on the page if one
-  doesn't, which catches the likelier half of that mistake.
+  `practice.js` checks each measure adds up to a bar and says so on the page if
+  one doesn't, which catches the likelier half of that mistake.
 
 ## Build
 Requires LilyPond on `$PATH`. Run `tools/scores/setup.sh` to install it if
@@ -72,12 +88,12 @@ measure range out of its `label` (e.g. `"mm 4-6"`), extracts those measures
 from the matching LilyPond source, and writes the cropped SVG to the path in
 the loop's `score` field.
 
-For the measure-practice page it renders `measure-practice.ly` twice over: the
-whole passage into `scores/measure-practice/mm-65-66.svg`, and each measure on
-its own into `mm-65.svg`, `mm-66.svg` — the page shows one or the other
-depending on which measures are selected. The bar number the source starts on
-lives in `PRACTICE_FIRST_BAR` in the script, since a single-measure slice would
-lose a `\set` written inside the music.
+For the practice pages it renders one SVG per row of `PRACTICE_MOVEMENTS` —
+the whole of that passage, every bar numbered, into
+`scores/measure-practice/<movement-id>-mm-<first>-<last>.svg`. The page shows
+whichever passage the selected measures fall in and lets the range be picked out
+of it, rather than a picture per pair of measures. The bar number a block starts
+on lives in the table, since the music carries no `\set` for it.
 
 The source is in **absolute octaves**, so every measure renders on its own —
 ranges that don't start at m. 1 simply set `Score.currentBarNumber`, with no
@@ -104,7 +120,8 @@ python3 tools/read_part.py part.jpg                       # list the systems
 python3 tools/read_part.py part.jpg --system 0 --clef tenor --out /tmp/read
 ```
 
-This is where `measure-practice.ly` came from. Needs numpy and pillow.
+This is where `measure-practice.ly` and `barber.ly` came from. Needs numpy and
+pillow.
 
 ## Adding notes or notations
 See the `score-workflow` skill (`.claude/skills/score-workflow/`) for the full
