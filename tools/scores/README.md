@@ -21,8 +21,18 @@ this directory.
 
   | block | movement | measures |
   |---|---|---|
+  | `introduction` | Introduction | 1–10 |
   | `danseInfernaleOpening` | Danse infernale du roi Kastcheï | 1–12 |
   | `danseInfernale` | Danse infernale du roi Kastcheï | 63–68 |
+
+  The Introduction is the exception to "read from the part": its notes come
+  from the 1919 full score (J. & W. Chester 1920, Kalmus reprint — the copy at
+  archive.org/details/igorstravinskyfi0000unse), measured off the scan with the
+  staff fitted per column, and cross-checked against the violas, who double
+  the line in m 3. It is the cello ostinato in 12/8, seven flats, built from two
+  six-note cells (A♭ F♭ E♭ C F G and A♭ F♭ A♭ F A D); the cellos rest after
+  m 10 until the harmonics after rehearsal 3. That score prints ♩ = 108, a
+  known misprint for ♪ = 108.
 
   A movement can hold several blocks — passages with gaps between them. Each
   block is rendered separately and the page shows whichever passage the selected

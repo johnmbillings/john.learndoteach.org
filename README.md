@@ -205,8 +205,10 @@ with it; a page loads the engine and then one piece file.
 | `barber.html` | `barber-practice.js` | Barber, Violin Concerto Op. 14, cello |
 
 A piece is `{ id, title, shortTitle?, sourceNote?, movements }`, and a movement
-is `{ id, name, tempo?, targetBpm?, meter?, unitsPerBeat, beatsPerMeasure,
-measures? }`. Every movement of the work is listed, transcribed or not — a
+is `{ id, name, tempo?, targetBpm?, beatNote?, meter?, unitsPerBeat,
+beatsPerMeasure, measures? }`. `beatNote` is the note the tempo box counts
+(♩ unless it says otherwise — the Firebird Introduction counts ♪, one unit to
+the eighth). Every movement of the work is listed, transcribed or not — a
 dropdown that hid the empty ones would also hide how much of a part is still
 unread — and a movement with no `measures` says so and sits out.
 

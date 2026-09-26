@@ -10,7 +10,7 @@
 // A piece is:
 //   { id, title, shortTitle?, sourceNote?, movements: [...] }
 // and a movement is:
-//   { id, name, tempo?, targetBpm?, meter?, clef?,
+//   { id, name, tempo?, targetBpm?, beatNote?, meter?, clef?,
 //     unitsPerBeat, beatsPerMeasure, measures? }
 // where `measures` is [{ n, notes: [...] }] and a movement without any is
 // listed but sits out. Durations are counted in units of the movement's own
@@ -734,6 +734,10 @@ function syncControls() {
   // follows the movement rather than sitting where the first one left it.
   const target = control('tempo-target');
   if (target) target.textContent = here.targetBpm ? `(printed ${here.targetBpm})` : '';
+  // The tempo box counts the movement's printed beat, which isn't always a
+  // quarter: the Introduction is marked by the eighth, and says so.
+  const note = control('tempo-note');
+  if (note) note.textContent = `${here.beatNote || '♩'} =`;
 
   // What this movement is, and what there is of it: the tempo it's printed at,
   // and either the bars that are ready or a plain word that none are.
