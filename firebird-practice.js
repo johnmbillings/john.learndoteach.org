@@ -23,6 +23,14 @@
   // beat, over and over. Written once because the beat is the thing to learn.
   const octaveBeat = () => [sixteenth('A2'), sixteenth('A3'), sixteenth('A3'), sixteenth('A2')];
 
+  // The Introduction counts in eighths (its printed beat), so its notes are one
+  // unit long and eighth() — two units, on the sixteenth grid — would be wrong
+  // there. Its line is two six-note cells in A♭ minor, seven flats: F♭ is E
+  // on the fingerboard, and every C, F, G and the second A of Q are naturals.
+  const e = (pitch) => chord(1, pitch);
+  const P = ['Ab2', 'Fb2', 'Eb2', 'C2', 'F2', 'G2'].map(e);
+  const Q = ['Ab2', 'Fb2', 'Ab2', 'F2', 'A2', 'D3'].map(e);
+
   // The movements of the suite, in playing order. `measures` is what has been
   // transcribed and checked against the part so far; the rest are listed for
   // their names and their printed tempo until someone does the reading.
@@ -36,10 +44,44 @@
     shortTitle: 'l’oiseau de feu',
     sourceNote: 'Stravinsky, <i>L’Oiseau de feu</i> (1919 suite) — cello part, '
       + 'Nieweg / McAlister edition (plate 22392), read from the part. '
+      + 'the Introduction is read from the 1919 full score (Chester, Kalmus reprint) instead. '
       + 'transcribed measures are engraved from <code>tools/scores/measure-practice.ly</code>; '
       + 'the movements are listed as the part numbers them.',
     movements: [
-    { id: 'introduction', name: 'Introduction', tempo: '♪ = 108' },
+    {
+      id: 'introduction',
+      name: 'Introduction',
+      tempo: '♪ = 108',
+      targetBpm: 108,
+      beatNote: '♪',
+      meter: '12/8',
+      clef: 'bass',
+      unitsPerBeat: 1,      // the printed beat is the eighth, and so is the unit
+      beatsPerMeasure: 12,
+      // mm 1–10: the cello ostinato, con sord. and pp, one slur to the bar.
+      // Read from the full score rather than the part (see the .ly), so check
+      // it against your part. After m 10 the cellos rest until the harmonics
+      // after rehearsal 3.
+      //
+      // The whole passage is two six-note cells, and the drill is hearing
+      // which one comes next — they share their first two notes and part at
+      // the third: E♭ to the low C, or back up to the A♭.
+      measures: [
+        { n: 1, notes: [...P, ...P] },
+        { n: 2, notes: [...Q, ...P] },
+        { n: 3, notes: [...P, ...Q] },
+        { n: 4, notes: [...P, ...P] },
+        { n: 5, notes: [...P, ...Q] },
+        { n: 6, notes: [...P, ...P] },
+        // The line lands on its A♭, and stops. The rests are split the way
+        // they're printed, so the page's band can pair them with the engraving.
+        { n: 7, notes: [e('Ab2'), rest(1), rest(1), rest(3), rest(3), rest(3)] },
+        { n: 8, notes: [rest(12)] },
+        // Rehearsal 2: the first cell once, landing on the A♭ again.
+        { n: 9, notes: [...P, e('Ab2'), rest(1), rest(1), rest(2), rest(1)] },
+        { n: 10, notes: [...P, e('Ab2'), rest(1), rest(1), rest(2), rest(1)] },
+      ],
+    },
     { id: 'oiseau-et-sa-danse', name: 'L’Oiseau de feu et sa danse', tempo: '♩ = 152' },
     { id: 'variation', name: 'Variation de l’Oiseau de feu', tempo: '♩. = 76' },
     { id: 'ronde-des-princesses', name: 'Ronde des princesses', tempo: '♩ = 72' },

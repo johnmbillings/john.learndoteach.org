@@ -34,6 +34,7 @@ BARBER_LY = HERE / 'barber.ly'
 # each in its own file keeps that boundary where someone will see it. The
 # engravings still share one output directory, since the pages do.
 PRACTICE_MOVEMENTS = [
+    (PRACTICE_LY, 'introduction', 'introduction', 1),
     (PRACTICE_LY, 'danseInfernaleOpening', 'danse-infernale', 1),
     (PRACTICE_LY, 'danseInfernale', 'danse-infernale', 63),
     (BARBER_LY, 'presto', 'iii-presto', 3),

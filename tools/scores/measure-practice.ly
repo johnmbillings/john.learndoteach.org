@@ -43,6 +43,47 @@
 %% builder splits a block by line — every line that ends in a bar check is a
 %% measure, every other line is setup — so a stray line break adds a measure.
 
+%% --- Introduction, mm 1–10: the cello ostinato ------------------------------
+%%
+%% Read from the 1919 full score (J. & W. Chester 1920, Kalmus reprint, "No. 41"
+%% — the copy at archive.org/details/igorstravinskyfi0000unse), not from the
+%% Nieweg part the Danse infernale came off: the notes are the same music, but
+%% check them against your part before trusting a bar of it.
+%%
+%% 12/8 in A♭ minor — seven flats, so F♭ and C♭ are in the key and every C, F,
+%% G and A below that isn't one is a written natural. con sord., pp, one slur
+%% to the bar. The whole line is two six-note cells, beamed in threes:
+%%
+%%   P   A♭ F♭ E♭ | C♮ F♮ G♮
+%%   Q   A♭ F♭ A♭ | F♮ A♮ D♮
+%%
+%%   m 1 P P · m 2 Q P · m 3 P Q · m 4 P P · m 5 P Q · m 6 P P
+%%   m 7 the A♭ alone, then rests · m 8 rest
+%%   m 9, m 10 (rehearsal 2) P, landing on an A♭ eighth, then rests
+%%
+%% The cellos rest from here to the harmonics glissando after rehearsal 3. The
+%% score prints the tempo as ♩ = 108, a well-known misprint; the part and every
+%% recording take it as ♪ = 108.
+
+introduction = \absolute {
+  \clef "bass"
+  \key aes \minor
+  \time 12/8
+  \set Staff.midiInstrument = "cello"
+
+  aes,8(\pp ^\markup { \italic "con sord." } fes, ees, c, f, g, aes, fes, ees, c, f, g,) |
+  aes,8( fes, aes, f, a, d aes, fes, ees, c, f, g,) |
+  aes,8( fes, ees, c, f, g, aes, fes, aes, f, a, d) |
+  aes,8( fes, ees, c, f, g, aes, fes, ees, c, f, g,) |
+  aes,8( fes, ees, c, f, g, aes, fes, aes, f, a, d) |
+  aes,8( fes, ees, c, f, g, aes, fes, ees, c, f, g,) |
+  aes,8 r8 r8 r4. r4. r4. |
+  R1. |
+  aes,8( fes, ees, c, f, g, aes,8-.) r8 r8 r4 r8 |
+  aes,8( fes, ees, c, f, g, aes,8-.) r8 r8 r4 r8 |
+}
+
+
 %% --- Danse infernale, mm 1–12: the opening and the entry at m 11 ------------
 %%
 %% One chord, nine bars of rest, and the entry. The part prints mm 2–10 as a
