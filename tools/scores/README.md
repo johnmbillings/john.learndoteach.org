@@ -30,7 +30,7 @@ this directory.
   archive.org/details/igorstravinskyfi0000unse), measured off the scan with the
   staff fitted per column, and cross-checked against the violas, who double
   the line in m 3. It is the cello ostinato in 12/8, seven flats, built from two
-  six-note cells (A♭ F♭ E♭ C F G and A♭ F♭ A♭ F A D); the cellos rest after
+  six-note cells (A♭ F♭ E♭ D F G and A♭ F♭ A♭ F A D); the cellos rest after
   m 10 until the harmonics after rehearsal 3. That score prints ♩ = 108, a
   known misprint for ♪ = 108.
 

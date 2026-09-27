@@ -50,11 +50,13 @@
 %% Nieweg part the Danse infernale came off: the notes are the same music, but
 %% check them against your part before trusting a bar of it.
 %%
-%% 12/8 in A♭ minor — seven flats, so F♭ and C♭ are in the key and every C, F,
-%% G and A below that isn't one is a written natural. con sord., pp, one slur
+%% 12/8 in A♭ minor — seven flats, so F♭ and D♭ are in the key and every D, F,
+%% G and A below that isn't one is a written natural. The lowest note is the D♮
+%% hanging under the first ledger line — not a C on a second one, which is how
+%% it was first misread. con sord., pp, one slur
 %% to the bar. The whole line is two six-note cells, beamed in threes:
 %%
-%%   P   A♭ F♭ E♭ | C♮ F♮ G♮
+%%   P   A♭ F♭ E♭ | D♮ F♮ G♮
 %%   Q   A♭ F♭ A♭ | F♮ A♮ D♮
 %%
 %%   m 1 P P · m 2 Q P · m 3 P Q · m 4 P P · m 5 P Q · m 6 P P
@@ -71,16 +73,16 @@ introduction = \absolute {
   \time 12/8
   \set Staff.midiInstrument = "cello"
 
-  aes,8(\pp ^\markup { \italic "con sord." } fes, ees, c, f, g, aes, fes, ees, c, f, g,) |
-  aes,8( fes, aes, f, a, d aes, fes, ees, c, f, g,) |
-  aes,8( fes, ees, c, f, g, aes, fes, aes, f, a, d) |
-  aes,8( fes, ees, c, f, g, aes, fes, ees, c, f, g,) |
-  aes,8( fes, ees, c, f, g, aes, fes, aes, f, a, d) |
-  aes,8( fes, ees, c, f, g, aes, fes, ees, c, f, g,) |
+  aes,8(\pp ^\markup { \italic "con sord." } fes, ees, d, f, g, aes, fes, ees, d, f, g,) |
+  aes,8( fes, aes, f, a, d aes, fes, ees, d, f, g,) |
+  aes,8( fes, ees, d, f, g, aes, fes, aes, f, a, d) |
+  aes,8( fes, ees, d, f, g, aes, fes, ees, d, f, g,) |
+  aes,8( fes, ees, d, f, g, aes, fes, aes, f, a, d) |
+  aes,8( fes, ees, d, f, g, aes, fes, ees, d, f, g,) |
   aes,8 r8 r8 r4. r4. r4. |
   R1. |
-  aes,8( fes, ees, c, f, g, aes,8-.) r8 r8 r4 r8 |
-  aes,8( fes, ees, c, f, g, aes,8-.) r8 r8 r4 r8 |
+  aes,8( fes, ees, d, f, g, aes,8-.) r8 r8 r4 r8 |
+  aes,8( fes, ees, d, f, g, aes,8-.) r8 r8 r4 r8 |
 }
 
 

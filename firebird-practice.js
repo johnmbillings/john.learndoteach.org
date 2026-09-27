@@ -26,9 +26,9 @@
   // The Introduction counts in eighths (its printed beat), so its notes are one
   // unit long and eighth() — two units, on the sixteenth grid — would be wrong
   // there. Its line is two six-note cells in A♭ minor, seven flats: F♭ is E
-  // on the fingerboard, and every C, F, G and the second A of Q are naturals.
+  // on the fingerboard, and every D, F, G and the second A are naturals.
   const e = (pitch) => chord(1, pitch);
-  const P = ['Ab2', 'Fb2', 'Eb2', 'C2', 'F2', 'G2'].map(e);
+  const P = ['Ab2', 'Fb2', 'Eb2', 'D2', 'F2', 'G2'].map(e);
   const Q = ['Ab2', 'Fb2', 'Ab2', 'F2', 'A2', 'D3'].map(e);
 
   // The movements of the suite, in playing order. `measures` is what has been
@@ -65,7 +65,7 @@
       //
       // The whole passage is two six-note cells, and the drill is hearing
       // which one comes next — they share their first two notes and part at
-      // the third: E♭ to the low C, or back up to the A♭.
+      // the third: on to the D below it, or back up to the A♭.
       measures: [
         { n: 1, notes: [...P, ...P] },
         { n: 2, notes: [...Q, ...P] },
