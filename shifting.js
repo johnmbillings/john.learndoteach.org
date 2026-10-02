@@ -252,7 +252,14 @@ function schedulePass(when, chain, lead) {
   // otherwise cancel a tick placed before it.
   if (lead && countIn) AudioKit.click(startWhen - step, false);
   if (loopOn) {
-    const ahead = Math.min(0.25, notes.length * step * 0.5);
+    // Keep ~2 s of audio queued ahead of the seam. The timer that schedules the
+    // next pass runs on the main thread, and iOS throttles timers to ~1 s when
+    // the screen is locked or the tab is backgrounded (CarPlay, phone in a
+    // pocket) — with only a short lead the timer fires late and every loop
+    // restarts with a gap. Passes shorter than the lookahead just schedule
+    // back-to-back (delay 0) until enough is queued; stopSequence() fades
+    // whatever is still pending, so queued-ahead passes stop cleanly.
+    const ahead = 2.0;
     const delay = Math.max(0, (nextStart - ahead - AudioKit.currentTime()) * 1000);
     loopTimerId = setTimeout(() => {
       if (loopOn && playing) schedulePass(nextStart, true, false);
