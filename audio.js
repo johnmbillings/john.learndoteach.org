@@ -61,32 +61,8 @@ const AudioKit = (() => {
     catch (e) { return new AC(); }
   }
 
-  // A continuous sub-audible noise floor on the sequence context. Bluetooth /
-  // CarPlay codecs gate or duck the channel whenever they see (near-)silence —
-  // the gap before the first note, and the low dips between legato notes — and
-  // reopening it as sound resumes comes back as a stutter. A faint constant
-  // noise keeps the codec's channel open so playback stays smooth. This is the
-  // same trick the drone already uses for its sustained tone; scale playback
-  // never had it. Inaudible on a normal speaker; lives and dies with the context
-  // (not registered in activeVoices, so stopSequence leaves it running between
-  // passes and while idle, keeping the Bluetooth link warm for the next note).
-  function attachKeepAlive(ctx) {
-    try {
-      const buf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
-      const d = buf.getChannelData(0);
-      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-      const src = ctx.createBufferSource();
-      src.buffer = buf; src.loop = true;
-      const bp = ctx.createBiquadFilter();
-      bp.type = 'bandpass'; bp.frequency.value = 4000; bp.Q.value = 0.5;
-      const g = ctx.createGain(); g.gain.value = 0.006; // sub-audible, above codec gate threshold
-      src.connect(bp).connect(g).connect(ctx.destination);
-      src.start();
-    } catch (e) {}
-  }
-
   function getSeqCtx() {
-    if (!seqCtx) { seqCtx = makeCtx(); liveCtxs.add(seqCtx); attachKeepAlive(seqCtx); }
+    if (!seqCtx) { seqCtx = makeCtx(); liveCtxs.add(seqCtx); }
     return seqCtx;
   }
   function resumeCtxs() {
@@ -129,7 +105,6 @@ const AudioKit = (() => {
       b.connect(seqCtx.destination);
       b.start(0);
     } catch (e) {}
-    attachKeepAlive(seqCtx); // keep the Bluetooth/CarPlay channel warm (no stutter)
     return seqCtx;
   }
 
@@ -497,8 +472,7 @@ const AudioKit = (() => {
   // instrument (e.g. AudioKit.instruments.cello) instead.
   function playSequence(baseMidi, seq, opts) { return plainCello.playSequence(baseMidi, seq, opts); }
 
-  // Sustained root with an optional perfect fifth. A sub-audible noise layer
-  // keeps Bluetooth codecs from silence-gating the steady tone.
+  // Sustained root with an optional perfect fifth.
   function createDrone() {
     let nodes = null;
     let rootMidi = 57;
@@ -522,37 +496,27 @@ const AudioKit = (() => {
       fifthOsc.type = 'sawtooth'; fifthOsc.frequency.value = root * FIFTH_RATIO;
       fifthGain.gain.value = fifthOn ? 1 : 0;
 
-      const noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
-      const nd = noiseBuf.getChannelData(0);
-      for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
-      const noise = ctx.createBufferSource();
-      noise.buffer = noiseBuf; noise.loop = true;
-      const noiseFilter = ctx.createBiquadFilter();
-      noiseFilter.type = 'bandpass'; noiseFilter.frequency.value = 2000; noiseFilter.Q.value = 0.6;
-      const noiseGain = ctx.createGain(); noiseGain.gain.value = 0.012;
-
       rootOsc.connect(voice.input);
       fifthOsc.connect(fifthGain); fifthGain.connect(voice.input);
       voice.output.connect(gain);
-      noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(gain);
       gain.connect(ctx.destination);
 
       const now = ctx.currentTime;
       gain.gain.setValueAtTime(0.0001, now);
       gain.gain.exponentialRampToValueAtTime(Math.max(volume, 0.0001), now + 0.15);
 
-      rootOsc.start(); fifthOsc.start(); noise.start();
-      nodes = { ctx, rootOsc, fifthOsc, fifthGain, noise, gain };
+      rootOsc.start(); fifthOsc.start();
+      nodes = { ctx, rootOsc, fifthOsc, fifthGain, gain };
     }
 
     function stop() {
       if (!nodes) return;
-      const { ctx, rootOsc, fifthOsc, noise, gain } = nodes;
+      const { ctx, rootOsc, fifthOsc, gain } = nodes;
       const now = ctx.currentTime;
       gain.gain.cancelScheduledValues(now);
       gain.gain.setValueAtTime(Math.max(gain.gain.value, 0.0001), now);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
-      [rootOsc, fifthOsc, noise].forEach(o => { try { o.stop(now + 0.25); } catch (e) {} });
+      [rootOsc, fifthOsc].forEach(o => { try { o.stop(now + 0.25); } catch (e) {} });
       setTimeout(() => { try { ctx.close(); } catch (e) {} liveCtxs.delete(ctx); }, 400);
       nodes = null;
     }
