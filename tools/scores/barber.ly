@@ -8,7 +8,7 @@
 %% its own rather than alongside the public-domain Stravinsky in
 %% measure-practice.ly: what is engraved here is a reproduction of a rented
 %% part on a public website, and whoever adds to it should keep the answer
-%% small. What is here is one measure of III and ten bars of I — passages
+%% small. What is here is one measure of III and twelve bars of I — passages
 %% drilled for a rehearsal, not a movement published.
 %%
 %% Written in **absolute octaves** so each measure stands alone when the
@@ -88,6 +88,32 @@ allegro = \absolute {
   r8 <fis, d>8 r4 <fis, d>8\< [ r8 r8 <fis, d>8\! ] |
 }
 
+
+%% --- I. Allegro, mm 113–114: two bars after rehearsal 9 --------------------
+%%
+%% Still 4/4 (re-set at m 110 after a bar of 3/2), "sempre animando", mf rinf.
+%% No key signature: the sharp is gone by this page and returns at rehearsal 10,
+%% so every flat is printed. Each bar alternates a beat of straight eighths
+%% with a beat of triplet eighths:
+%%
+%%   113   𝄾 E♭  | C A B♭ (3) | G G  | E♭ C D (3)
+%%   114   B♭ D  | G C A (3)  | D C  | A D G (3)
+%%
+%% The E♭ in 113 is a flagged eighth on its own; everything else is beamed by
+%% the beat. Slurs as the part draws them: E♭ over the first triplet, the second
+%% G over the second; in 114 the first two beats under one, D–C, and the last
+%% triplet.
+
+allegroLate = \absolute {
+  \clef "bass"
+  \key c \major
+  \time 4/4
+  \set Staff.midiInstrument = "cello"
+  \autoBeamOff
+
+  r8 ees'8\mf _\markup { \italic "rinf." } ^\markup { \italic "sempre animando" } ( \tuplet 3/2 { c'8[ a8 bes8]) } g8[ g8(] \tuplet 3/2 { ees8[ c8 d8]) } |
+  bes,8[( d8] \tuplet 3/2 { g8[ c'8 a8]) } d'8[( c'8]) \tuplet 3/2 { a8[( d8 g8]) } |
+}
 
 \score {
   \presto

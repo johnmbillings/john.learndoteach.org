@@ -39,6 +39,7 @@ PRACTICE_MOVEMENTS = [
     (PRACTICE_LY, 'danseInfernale', 'danse-infernale', 63),
     (BARBER_LY, 'presto', 'iii-presto', 3),
     (BARBER_LY, 'allegro', 'i-allegro', 50),
+    (BARBER_LY, 'allegroLate', 'i-allegro', 113),
 ]
 
 src = SRC_LY.read_text()
