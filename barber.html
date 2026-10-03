@@ -341,7 +341,18 @@
   <div class="movement-pick">
     <select id="movement" aria-label="movement"></select>
     <p id="movement-state"></p>
-  </div>
+    <!-- Up here with the movement rather than down with the other controls: on
+         a phone a long passage pushes everything below the strip off the
+         screen, and the measures are the other half of what you're choosing. -->
+    <div class="controls range-pick">
+      <span class="ctl">
+        measures
+        <select id="from" aria-label="first measure"></select>
+        <span class="dash">–</span>
+        <select id="to" aria-label="last measure"></select>
+        <button id="whole" type="button">all</button>
+      </span>
+    </div>
 
   <div id="score-wrapper">
     <div id="score-frame">
@@ -360,13 +371,6 @@
   <button id="play" type="button">play</button>
 
   <div class="controls">
-    <span class="ctl">
-      measures
-      <select id="from" aria-label="first measure"></select>
-      <span class="dash">–</span>
-      <select id="to" aria-label="last measure"></select>
-      <button id="whole" type="button">all</button>
-    </span>
     <label class="ctl">
       <span id="tempo-note">♩ =</span>
       <input id="tempo" type="number" min="20" max="200" step="1" value="60">
@@ -420,7 +424,7 @@
        moment the two disagree about what controls exist. Bump ?v= whenever
        either file changes in a way the other depends on. -->
   <script src="audio.js?v=5"></script>
-  <script src="practice.js?v=4"></script>
-  <script src="barber-practice.js?v=3"></script>
+  <script src="practice.js?v=5"></script>
+  <script src="barber-practice.js?v=4"></script>
 </body>
 </html>
