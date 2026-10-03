@@ -849,6 +849,27 @@ function applyPrefs() {
   });
 }
 
+// A link can name what to open on — ?movement=danse-infernale&from=65&to=66 —
+// and wins over what was left selected last time, since following a link is
+// asking for that passage. Bar numbers, like the saved range; "to" defaults to
+// "from", and a range that runs off its passage is cut short where it ends.
+function applyUrl() {
+  let q;
+  try { q = new URLSearchParams(location.search); } catch (e) { return false; }
+  const m = PIECE.movements.findIndex(x => x.id === q.get('movement'));
+  const from = parseInt(q.get('from'), 10);
+  if (m < 0 && !Number.isFinite(from)) return false;
+  if (m >= 0) movementIdx = m;
+  const list = measures();
+  const a = list.findIndex(x => x.n === from);
+  if (a < 0) { fromIdx = 0; toIdx = passageAt(0).to; return true; }
+  const to = parseInt(q.get('to'), 10);
+  const b = list.findIndex(x => x.n === (Number.isFinite(to) ? to : from));
+  fromIdx = a;
+  toIdx = b >= a ? Math.min(b, passageAt(a).to) : a;
+  return true;
+}
+
 // --- starting up -------------------------------------------------------------
 
 // Called by the piece's own script once it has its movements together. One
@@ -879,6 +900,7 @@ function start(piece) {
   toIdx = passageAt(0).to;
 
   applyPrefs();
+  const linked = applyUrl();
   buildMovementOptions();
   buildRangeOptions();
   buildCounter();
@@ -887,6 +909,8 @@ function start(piece) {
   buildStrip();
   initControls();
   syncControls();
+  // Remembered, so coming back without the link finds the same passage.
+  if (linked) savePrefs();
 
   // Reached only if everything above ran. The page's load handler shows a
   // visible notice when this flag is missing, which is the only way a phone can
