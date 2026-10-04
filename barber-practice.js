@@ -16,8 +16,11 @@
 // a movement is another. Whoever adds measures here should decide how much
 // belongs on a public site, and keep the answer small.
 //
-// What is on the page so far is III, m 3 and I, mm 50–59 and 113–114 — passages to drill
-// before a rehearsal, which is the scale the decision above was made at. The
+// What is on the page so far is III, mm 3–8 and I, mm 50–59 and 113–114 —
+// passages to drill before a rehearsal, which is the scale the decision above
+// was made at. (III, mm 4–8 were written from a description of the bars rather
+// than read off a photograph, so their staccato dots and rest spellings follow
+// m 3, not the part.) The
 // engravings live in tools/scores/barber.ly, kept apart from the public-domain
 // sources for the same reason; they and the notes below describe the same bars
 // and have to be edited together.
@@ -45,7 +48,11 @@
   const r4 = () => rest(QUARTER);
   // One beat of triplet eighths.
   const triplet = (...pitches) => pitches.map(p => chord(2, p));
-  const stop = (units) => chord(units, 'E2', 'A2');   // III's one double stop
+  // III's double stops all have A2 on top and only the note under it moves —
+  // E2 through mm 3–6, down a step to D2 in m 8. m 7 is the exception: two
+  // single notes, no stop at all.
+  const stop = (units, under) => chord(units, under, 'A2');
+  const single = (units, pitch) => chord(units, pitch);
 
   // I, mm 55–59 are double stops: a walking lower voice under a held upper one.
   const ds = (lower, upper) => chord(EIGHTH, lower, upper);
@@ -149,10 +156,51 @@
           // comes pp on the last of them, off the beat and quiet, between a sf
           // downbeat and a bar's worth of silence either side of it.
           { n: 3, notes: [
-              stop(3), rest(3),               // beat 1: sf, then an eighth rest
-              rest(2), rest(2), stop(2),      // beat 2: the triplet, pp on its third
-              rest(6),                        // beat 3: a quarter rest
-              stop(3), rest(3),               // beat 4: the stop again, then a rest
+              stop(3, 'E2'), rest(3),             // beat 1: sf, then an eighth rest
+              rest(2), rest(2), stop(2, 'E2'),    // beat 2: the triplet, pp on its 3rd
+              rest(6),                            // beat 3: a quarter rest
+              stop(3, 'E2'), rest(3),             // beat 4: the stop, then a rest
+          ] },
+          // m 4 is the bar in plain eighths: eight of them, and only the third
+          // and the seventh sound — squarely on beats 2 and 4. Both bars answer
+          // on those two beats, but m 3 pushes its beat-2 entry to the last
+          // third of the triplet, late, and m 4 puts it on the beat. Beat 4 is
+          // in the same place in both, which is what makes the difference on
+          // beat 2 something you can hear rather than count.
+          { n: 4, notes: [
+              rest(3), rest(3), stop(3, 'E2'), rest(3),   // the 3rd eighth sounds
+              rest(3), rest(3), stop(3, 'E2'), rest(3),   // and the 7th
+          ] },
+          // mm 5 and 6 are identical, and move the answer once more: onto beats
+          // 1 and 3, both square on the beat. Across the four bars the entry
+          // walks — late in beat 2, then on beat 2, then on beat 1 — while the
+          // stop under it never changes. There is nothing here to find with the
+          // left hand, only a place to be, which is why the bars are worth
+          // looping as a run rather than one at a time.
+          ...[5, 6].map(n => ({ n, notes: [
+              stop(3, 'E2'), rest(3), rest(3), rest(3),   // beat 1, then nothing
+              stop(3, 'E2'), rest(3), rest(3), rest(3),   // beat 3, the same again
+          ] })),
+          // m 7 keeps that rhythm and drops the double stop: two single notes,
+          // E2 on beat 1 and F2 on beat 3 — a half step, the smallest move in
+          // the passage and the one most easily played flat. With the A2 gone
+          // there is no open-ish anchor above it either, so the semitone is
+          // exposed.
+          { n: 7, notes: [
+              single(3, 'E2'), rest(3), rest(3), rest(3),   // beat 1
+              single(3, 'F2'), rest(3), rest(3), rest(3),   // beat 3, a half step up
+          ] },
+          // m 8 goes back to m 3's rhythm — the triplet, its late entry and
+          // all — under a different stop: A2 stays on top and the note beneath
+          // drops from E2 to D2, so the fourth becomes a fifth. Coming after
+          // four bars of the same stop, that is the bar where the left hand has
+          // something to do again, and it arrives on the rhythm that was hardest
+          // to place the first time.
+          { n: 8, notes: [
+              stop(3, 'D2'), rest(3),             // beat 1
+              rest(2), rest(2), stop(2, 'D2'),    // beat 2: the triplet's late entry
+              rest(6),                            // beat 3
+              stop(3, 'D2'), rest(3),             // beat 4
           ] },
         ],
       },
