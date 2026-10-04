@@ -54,14 +54,15 @@ this directory.
   the builder removes the `Time_signature_engraver`; beams are manual, since
   neither the ♪♬ cell nor m 65's six-eighth beam is what 3/4 would do by itself.
 
-- `barber.ly` — Barber, Violin Concerto Op. 14: III, m 3 and I, mm 50–59, from
+- `barber.ly` — Barber, Violin Concerto Op. 14: III, mm 3–8 and I, mm 50–59 and
+  113–114, from
   the orchestra cello part rented from G. Schirmer. **The concerto is in
   copyright** (published 1941; protected in the US into the late 2030s, longer in
   Europe), which is why it is a file of its own rather than another block in
   `measure-practice.ly`: what is engraved here is a reproduction of a rented part
   on a public website, and the boundary belongs somewhere someone will see it. A
-  bar and a ten-bar passage is what is there, and that is the point — passages
-  drilled before a rehearsal, not a movement published. Absolute octaves and one
+  few short passages is what is there, and that is the point — passages drilled
+  before a rehearsal, not a movement published. Absolute octaves and one
   measure per line, like the rest.
 
   I, mm 50–59 is rehearsal 4 to the bar before rehearsal 5: 4/4, one sharp, bass
@@ -70,10 +71,20 @@ this directory.
   movement carries no printed tempo on the page. Beams are manual because the
   1941 engraving beams by the half bar, which is not what 4/4 does by itself.
 
+  I, mm 113–114 are two bars after rehearsal 9, "sempre animando", mf rinf.,
+  with no key signature in force (the sharp returns at rehearsal 10). Each beat
+  alternates straight eighths with triplet eighths, so movement I counts in
+  sixths of a beat on the page, like III.
+
   III is 4/4 at ♩ = 192. The bar is the cellos taking the mutes off
   (*senza sord.*) on one double stop, E2 under A2, struck staccato: sf on the
   downbeat, then the answer pp on the last third of a triplet whose first two
-  thirds are rests, then a quarter rest and the stop once more.
+  thirds are rests, then a quarter rest and the stop once more. mm 4–8 walk
+  the same stop's entry from beat 2 to beat 1 (m 4 on beats 2 and 4, mm 5–6 on
+  1 and 3), m 7 drops to single notes E2 and F2, and m 8 returns to m 3's
+  rhythm on D2 under A2. Only m 3 was photographed; mm 4–8 were written from a
+  description, so their staccato dots and eighth-rest spellings follow m 3
+  rather than the part.
 
   **Adding a passage** is a block in one of these sources plus a row in
   `PRACTICE_MOVEMENTS` in the builder (source path, LilyPond variable, movement
