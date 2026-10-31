@@ -201,13 +201,20 @@ list, the more they ask of the thumb, the ear or the eye:
 
 | | passage | where the thumb is | clef |
 |---|---|---|---|
-| 1–3 | the harmonics; three fingers on the A string; D major, one octave | the half-string harmonics (D and A) | tenor |
-| 4–7 | mary had a little lamb; twinkle; ode to joy; frère jacques | the same | tenor |
-| 8–9 | G major and ode to joy in G — the low 2nd finger | the same | tenor |
-| 10–11 | D major in broken thirds; arpeggios across the strings | the same | tenor |
-| 12 | thumb on G and D — G major, G to G | a fourth above the harmonics | tenor |
-| 13–17 | the same scale, tunes and thirds an octave up | the three-quarter harmonics (D and A, an octave up) | treble |
-| 18 | two octaves, D to D | both positions, with the shift between them | tenor → treble |
+| 1–3 | the harmonics; three fingers on the A string; D major, one octave | the half-string harmonics of the D and A strings (D4, A4) | treble |
+| 4–7 | mary had a little lamb; twinkle; ode to joy; frère jacques | the same | treble |
+| 8 | G major — the low 2nd finger | the same | treble |
+| 9–10 | D major in broken thirds; arpeggios across the strings | the same | treble |
+| 11–15 | the harmonics on G and D; G major; ode to joy and twinkle in G; G major in thirds | the harmonics of the G and D strings (G3, D4) | tenor |
+| 16 | C major on the C and G strings | the harmonics of the C and G strings (C3, G3) | tenor |
+| 17 | C major, two octaves | across all four strings' harmonics in turn, no shift | tenor → treble → tenor |
+| 18 | two octaves, D to D | from the octave harmonics up to the three-quarter ones (D5, A5) | treble |
+
+Octaves are scientific (the open strings are C2 G2 D3 A3), which is what puts
+the first thumb position — the D and A harmonics, D4 and A4 — in treble clef:
+on the tenor staff the open A is the middle line and the harmonic sits two
+ledger lines above. The same frame on the G and D strings is what the tenor
+staff holds, which is why the ladder changes strings to change clef.
 
 Everything is data at the top of `thumb.js`. A passage is
 `{ id, name, clef, key, meter, targetBpm, position, about, measures }`;
@@ -215,8 +222,9 @@ Everything is data at the top of `thumb.js`. A passage is
 `0` for an open string) and which of the thumb's notes sit on a natural
 harmonic, so fingerings don't have to be typed note by note — a note can
 still carry its own finger, and its own harmonic mark, which win (passage 18
-does, because the same D is a 3rd finger going up and a thumb coming down,
-and the high A is a harmonic its position map doesn't know about). A bar is
+and 18 do, because the thumb crosses to strings their position map doesn't
+cover, and because in 18 the same D is a 3rd finger going up and a thumb
+coming down). A bar is
 a list of events, `q('A3')`, `e('B3')`, `h('D4')`, `qd('F#3')`, `w('D3')` or
 `r('4')` for a rest, written with the same duration strings as the rhythm
 page; a bar may be `clefTo('treble', [...])` to change clef from there on.
@@ -230,16 +238,16 @@ Around the play button:
   tune you already know in the other clef is most of what learning a clef is.
 - **fingerings** and **harmonic circles** — each on or off, for reading
   without the crutch. The circle sits over a thumb note that lies on a natural
-  harmonic (the half-string and three-quarter-string D and A), under the
-  thumb sign; where the thumb is a fourth up there is no harmonic and no
-  circle.
+  harmonic (the half-string harmonics of each string, and the three-quarter
+  ones at the top of passage 18), under the thumb sign; a thumb on a stopped
+  note gets no circle.
 - **measures** — a range to loop, as on the other practice pages.
 - **tempo** — a slider to the mark and a little past it; each passage
   remembers the speed it was last taken at, and a new one starts at 70% of
   its mark.
 - **metronome, count-in, loop** — as on the rhythm page.
-- **drone** — the tonic of the passage's key, low on the cello (D2 or G2),
-  with an optional fifth, from the shared drone in `audio.js`. Thirds in thumb
+- **drone** — the open string of the passage's key (C2, G2, D3 or A3), with
+  an optional fifth, from the shared drone in `audio.js`. Thirds in thumb
   position are tuned against it.
 - **the readout** — the note sounding, by name with its octave (a tenor-clef
   note misread by a third is the usual mistake, and the octave tells the two
