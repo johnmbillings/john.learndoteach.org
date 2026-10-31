@@ -85,49 +85,54 @@ function parsePitch(text) {
 // note gets it when the position says the thumb is on one.
 const n = (pitch, dur, finger, harm) => Object.assign(parseDur(dur), { sound: true, pitch: parsePitch(pitch), finger: finger != null ? String(finger) : null, harm: harm != null ? !!harm : null });
 const r = (dur) => Object.assign(parseDur(dur), { sound: false });
-const w = (p, f) => n(p, '1', f);
-const h = (p, f) => n(p, '2', f);
-const q = (p, f) => n(p, '4', f);
-const qd = (p, f) => n(p, '4.', f);
-const e = (p, f) => n(p, '8', f);
+const w = (p, f, hm) => n(p, '1', f, hm);
+const h = (p, f, hm) => n(p, '2', f, hm);
+const q = (p, f, hm) => n(p, '4', f, hm);
+const qd = (p, f, hm) => n(p, '4.', f, hm);
+const e = (p, f, hm) => n(p, '8', f, hm);
 const clefTo = (clef, events) => ({ clef, events });
 
 // --- the hand ----------------------------------------------------------------
 // The thumb at the half-string harmonics, on each pair of strings. The pattern
-// is the same in each: thumb, then 1, 2, 3 a whole step, a whole (or half)
-// step and a half step up, on both strings at once. A position is the finger
-// for each pitch, and which of the thumb's notes sit on a natural harmonic —
-// those get a circle over them.
+// is the same on every string: the thumb an octave above the open string, then
+// 1, 2 and 3 a whole step, a whole (or half) step and a half step up — two,
+// three or four, and five semitones above the thumb.
+//
+// The positions are derived from the open strings rather than written out, so
+// that an octave can't be mistyped into them: everything the page knows about
+// where a note is on the instrument comes from these four pitches. (The page
+// once had the open A as A2 — one octave too low — and, copied into every
+// position by hand, nothing could contradict it.)
+const OPEN_STRINGS = { C: 'C2', G: 'G2', D: 'D3', A: 'A3' };   // 65, 98, 147, 220 Hz
+const THUMB_FRAME = { 0: 'T', 2: '1', 3: '2', 4: '2', 5: '3' }; // semitones above the thumb
 
-// On the D and A strings: D4 and A4, the octave harmonics. The first thumb
-// position everyone learns, on the two thinnest strings.
-const ON_DA = {
-  fingers: {
-    D4: 'T', E4: '1', F4: '2', 'F#4': '2', G4: '3',
-    A4: 'T', B4: '1', C5: '2', 'C#5': '2', D5: '3',
-    A3: '0', D3: '0',
-  },
-  harmonics: ['D4', 'A4'],
-};
-// On the G and D strings: G3 and D4. The same frame, thicker strings, more
-// work for the thumb.
-const ON_GD = {
-  fingers: {
-    G3: 'T', A3: '1', B3: '2', 'Bb3': '2', C4: '3',
-    D4: 'T', E4: '1', F4: '2', 'F#4': '2', G4: '3',
-    D3: '0', G2: '0',
-  },
-  harmonics: ['G3', 'D4'],
-};
-// On the C and G strings: C3 and G3. The thumb's real test.
-const ON_CG = {
-  fingers: {
-    C3: 'T', D3: '1', E3: '2', 'Eb3': '2', F3: '3',
-    G3: 'T', A3: '1', B3: '2', 'Bb3': '2', C4: '3',
-    G2: '0', C2: '0',
-  },
-  harmonics: ['C3', 'G3'],
-};
+// A position is a pair of strings. It answers, for a pitch, which finger plays
+// it and whether it sits on a natural harmonic; a pitch it can't reach gets
+// no finger, which checkPassages() reports.
+function thumbAtHarmonics(...strings) {
+  const anchors = strings.map(name => {
+    const open = parsePitch(OPEN_STRINGS[name]).midi;
+    return { name, open, thumb: open + 12 };
+  });
+  return {
+    name: 'thumb on ' + strings.join(' and '),
+    finger(midi) {
+      for (const a of anchors) {
+        if (midi === a.open) return '0';
+        if (THUMB_FRAME[midi - a.thumb] != null) return THUMB_FRAME[midi - a.thumb];
+      }
+      return '';
+    },
+    harmonic(midi) { return anchors.some(a => midi === a.thumb); },
+  };
+}
+
+// On the D and A strings: D4 and A4, the octave harmonics — the first thumb
+// position everyone learns, on the two thinnest strings. Then the same frame
+// one pair lower, and on the two thick strings, the thumb's real test.
+const ON_DA = thumbAtHarmonics('D', 'A');
+const ON_GD = thumbAtHarmonics('G', 'D');
+const ON_CG = thumbAtHarmonics('C', 'G');
 
 // --- the passages ------------------------------------------------------------
 // In the order they're meant to be taken: the ones further down the list ask
@@ -372,7 +377,7 @@ const PASSAGES = [
     id: 'c-major-cg',
     name: '16 · C major on the C and G strings',
     clef: 'tenor', key: 'C', meter: [4, 4], targetBpm: 80, position: ON_CG,
-    about: 'The frame on the two thick strings, thumb at the C and G harmonics. This is the thumb\'s real test: the C string takes weight to stop cleanly. In tenor clef the thumb\'s C hangs a ledger line below the staff and the octave C sits on the fourth line, where the clef points.',
+    about: 'The frame on the two thick strings, thumb at the C and G harmonics. This is the thumb\'s real test: the C string takes weight to stop cleanly. In tenor clef the thumb\'s C sits in the space just under the staff and the octave C on the fourth line, where the clef points.',
     measures: [
       [q('C3'), q('D3'), q('E3'), q('F3')],
       [q('G3'), q('A3'), q('B3'), q('C4')],
@@ -388,7 +393,7 @@ const PASSAGES = [
     id: 'c-major-two',
     name: '17 · C major, two octaves, across all four strings',
     clef: 'tenor', key: 'C', meter: [4, 4], targetBpm: 80, position: ON_CG,
-    about: 'The thumb lies across the harmonics of every string in turn — C and G, G and D, D and A — and the fingers keep the same shape on each: thumb, 1, 2, 3 up the C string, the G, the D, then thumb, 1, 2 on the A. Two octaves without a shift. The clef changes to treble where the A string begins, above the tenor staff, and back on the way down.',
+    about: 'The thumb lies across the harmonics of every string in turn — C and G, G and D, D and A — and the fingers keep the same shape on each: thumb, 1, 2, 3 up the C string, the G, the D, then thumb, 1, 2 on the A — with the low 2 on the D and A strings (F and C). Two octaves without a shift. The clef changes to treble where the A string begins, above the tenor staff, and back on the way down.',
     measures: [
       [q('C3', 'T', true), q('D3', '1'), q('E3', '2'), q('F3', '3')],
       [q('G3', 'T', true), q('A3', '1'), q('B3', '2'), q('C4', '3')],
@@ -426,8 +431,8 @@ PASSAGES.forEach(p => {
     bar.n = i + 1;
     bar.events.forEach(ev => {
       if (!ev.sound) return;
-      if (ev.finger == null) ev.finger = p.position.fingers[ev.pitch.text] != null ? p.position.fingers[ev.pitch.text] : '';
-      if (ev.harm == null) ev.harm = ev.finger === 'T' && p.position.harmonics.includes(ev.pitch.text);
+      if (ev.finger == null) ev.finger = p.position.finger(ev.pitch.midi);
+      if (ev.harm == null) ev.harm = ev.finger === 'T' && p.position.harmonic(ev.pitch.midi);
     });
     return bar;
   });
@@ -465,7 +470,9 @@ function measureTicks(p) { return p.meter[0] * beatTicks(p); }
 function beatsPerMeasure(p) { return p.meter[0]; }
 
 // A bar that doesn't add up to its meter would play, and engrave, as something
-// nobody wrote. Report it instead.
+// nobody wrote. Report it instead — and a note the passage's hand can't reach,
+// or one below the C string, which is the shape an octave error takes.
+const LOWEST_MIDI = parsePitch(OPEN_STRINGS.C).midi;
 function checkPassages() {
   const out = PROBLEMS.slice();
   PASSAGES.forEach(p => {
@@ -473,6 +480,11 @@ function checkPassages() {
     (p.measures || []).forEach(m => {
       const got = m.events.reduce((sum, ev) => sum + ev.ticks, 0);
       if (got !== want) out.push(`${p.name} m.${m.n}: ${got}/${want} ticks — the bar doesn't add up`);
+      m.events.forEach(ev => {
+        if (!ev.sound) return;
+        if (ev.pitch.midi < LOWEST_MIDI) out.push(`${p.name} m.${m.n}: ${ev.pitch.name} is below the C string`);
+        if (!ev.finger) out.push(`${p.name} m.${m.n}: ${ev.pitch.name} has no finger in ${p.position.name}`);
+      });
     });
   });
   return out;
@@ -1111,14 +1123,12 @@ const drone = AudioKit.createDrone();
 let droneFifth = false;
 let droneVolume = 0.1;
 
-// The drone sits on the open string of the key's tonic where there is one
-// (C2, G2, D3, A3) — the note a cellist tunes to anyway — else low in the
-// second octave.
-const OPEN_STRINGS = { C: 2, G: 2, D: 3, A: 3 };
+// The drone sits on the open string of the key's tonic where there is one —
+// the note a cellist tunes to anyway — else low in the second octave.
 function droneMidi() {
   const key = passage().key;
-  const root = key.replace('#', '♯').replace('b', '♭');
-  return AudioKit.pitchToMidi(root + (OPEN_STRINGS[key] || 2));
+  if (OPEN_STRINGS[key]) return parsePitch(OPEN_STRINGS[key]).midi;
+  return AudioKit.pitchToMidi(key.replace('#', '♯').replace('b', '♭') + '2');
 }
 
 function syncDrone() {

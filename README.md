@@ -218,18 +218,24 @@ staff holds, which is why the ladder changes strings to change clef.
 
 Everything is data at the top of `thumb.js`. A passage is
 `{ id, name, clef, key, meter, targetBpm, position, about, measures }`;
-`position` is the finger for each pitch in that passage (`T` for the thumb,
-`0` for an open string) and which of the thumb's notes sit on a natural
-harmonic, so fingerings don't have to be typed note by note — a note can
-still carry its own finger, and its own harmonic mark, which win (passage 18
-and 18 do, because the thumb crosses to strings their position map doesn't
-cover, and because in 18 the same D is a 3rd finger going up and a thumb
-coming down). A bar is
+`position` is a pair of strings with the thumb at their octave harmonics
+(`thumbAtHarmonics('D', 'A')`); it answers, for any pitch, which finger plays
+it (`T` for the thumb, `0` for an open string) and whether it sits on a
+natural harmonic, so fingerings don't have to be typed note by note. The
+positions are **derived from the open strings** (`OPEN_STRINGS`: C2 G2 D3
+A3) rather than written out, so an octave can't be mistyped into them — the
+page once had the open A as A2, copied into every position by hand, and
+nothing could contradict it. A note can still carry its own finger and
+harmonic mark, which win (passages 17 and 18 do, because the thumb crosses to
+strings their position doesn't cover, and because in 18 the same D is a 3rd
+finger going up and a thumb coming down). A bar is
 a list of events, `q('A3')`, `e('B3')`, `h('D4')`, `qd('F#3')`, `w('D3')` or
 `r('4')` for a rest, written with the same duration strings as the rhythm
 page; a bar may be `clefTo('treble', [...])` to change clef from there on.
-`checkPassages()` reports any bar that doesn't add up to its meter on the
-page rather than letting it play as something nobody wrote.
+`checkPassages()` reports on the page any bar that doesn't add up to its
+meter, any note the passage's hand can't reach, and any note below the C
+string — the shapes an error in the data takes — rather than letting it play
+as something nobody wrote.
 
 Around the play button:
 
