@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>thumb position</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
+  <style>
+    /* Bravura: the SMuFL standard music font, self-hosted so clefs, noteheads
+       and fingerings render identically on every device. See fonts/OFL.txt. */
+    @font-face {
+      font-family: 'Bravura';
+      src: url('fonts/Bravura.woff2') format('woff2');
+      font-display: block;
+    }
+    body {
+      margin: 0;
+      background: #000;
+      color: #fff;
+      font-family: "Cormorant Garamond", serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.4rem;
+      padding: 2.5rem 1rem 4rem;
+      box-sizing: border-box;
+    }
+    a { color: #9cd8ff; }
+    .back {
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      font-size: 1rem;
+      color: #666;
+      text-decoration: none;
+    }
+    .back:hover { color: #d8d8ff; }
+
+    h1 {
+      margin: 0;
+      font-size: 2.2rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: lowercase;
+    }
+    .hint {
+      margin: -0.5rem 0 0;
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.5);
+      font-style: italic;
+      text-align: center;
+      max-width: 36rem;
+    }
+
+    /* --- which passage --- */
+    .pick {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      width: min(40rem, 100%);
+    }
+    .pick-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    #passage {
+      background: #000;
+      border: 1px solid #666;
+      color: #ddd;
+      font-family: inherit;
+      font-size: 1.15rem;
+      padding: 0.3em 0.5em;
+      max-width: 70vw;
+    }
+    #passage:hover { border-color: #9cd8ff; }
+    #prev, #next { font-size: 1rem; padding: 0.3em 0.6em; }
+    #about {
+      margin: 0;
+      font-size: 1.02rem;
+      line-height: 1.45;
+      color: rgba(255, 255, 255, 0.62);
+      text-align: center;
+      max-width: 36rem;
+    }
+    #range-label {
+      margin: 0;
+      font-size: 0.9rem;
+      font-style: italic;
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    /* --- the engraving --- */
+    /* Drawn in the page's own ink rather than on paper: every note is a live
+       element here. The one sounding lights up, and a tap on one sounds it. */
+    #score {
+      width: min(48rem, 100%);
+      padding: 0.4rem 0.2rem;
+    }
+    #score svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      overflow: visible;
+    }
+    #score .staff { stroke: rgba(255, 255, 255, 0.3); stroke-width: 1.2; }
+    #score .ledger { stroke: rgba(255, 255, 255, 0.55); stroke-width: 1.5; }
+    #score .barline { stroke: rgba(255, 255, 255, 0.45); stroke-width: 1.6; }
+    #score .barline-thick { fill: rgba(255, 255, 255, 0.45); }
+    #score .gl { font-family: 'Bravura'; fill: #ececec; }
+    #score .clef { fill: rgba(255, 255, 255, 0.85); }
+    #score .clef-change { fill: rgba(255, 255, 255, 0.85); }
+    #score .sig { font-family: 'Bravura'; fill: rgba(255, 255, 255, 0.75); }
+    #score .acc { fill: #ececec; }
+    #score .stem { stroke: #ececec; stroke-width: 1.3; }
+    #score .beam { fill: #ececec; }
+    #score .fing { font-family: 'Bravura'; fill: rgba(255, 255, 255, 0.72); }
+    #score .bar-no {
+      font-family: "Cormorant Garamond", serif;
+      font-size: 0.42em;
+      fill: rgba(255, 255, 255, 0.35);
+    }
+    #score .ev { cursor: pointer; }
+    /* A rest is a length you count, so it is drawn a little back from the
+       notes without disappearing — and it lights up on its turn like they do. */
+    #score .ev.rest .gl { fill: rgba(255, 255, 255, 0.5); }
+    #score .ev.on .gl,
+    #score .ev.on .fing,
+    #score .beam.on { fill: #9cd8ff; }
+    #score .ev.on .stem,
+    #score .stem.on,
+    #score .ev.on .ledger { stroke: #9cd8ff; }
+    #score .ev.on .gl { filter: drop-shadow(0 0 6px rgba(156, 216, 255, 0.55)); }
+
+    /* --- the readout: which note, which bar, which beat --- */
+    #counter {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.3rem;
+      opacity: 0.35;
+      transition: opacity 0.2s;
+    }
+    #counter.running { opacity: 1; }
+    #note {
+      display: flex;
+      align-items: baseline;
+      gap: 0.6rem;
+      min-height: 3.4rem;
+    }
+    #note-name {
+      font-size: 3rem;
+      line-height: 1;
+      letter-spacing: 0.03em;
+      color: #9cd8ff;
+    }
+    #note-finger {
+      font-size: 1.2rem;
+      font-style: italic;
+      color: rgba(255, 255, 255, 0.55);
+    }
+    #count {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+    }
+    #count-bar {
+      font-size: 1.6rem;
+      line-height: 1;
+      color: rgba(255, 255, 255, 0.7);
+      font-variant-numeric: tabular-nums;
+      min-width: 1.6em;
+      text-align: right;
+    }
+    #count-beats { display: flex; gap: 0.5rem; }
+    #count-beats .pip {
+      width: 0.6rem;
+      height: 0.6rem;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      transition: background 0.08s, border-color 0.08s;
+    }
+    #count-beats .pip.on { background: #9cd8ff; border-color: #9cd8ff; }
+    /* How long the thumb has been down: passes and minutes of the run. */
+    #run {
+      font-size: 0.95rem;
+      font-style: italic;
+      color: rgba(255, 255, 255, 0.45);
+      min-height: 1.2em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* --- the speed --- */
+    .speed {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      width: min(30rem, 100%);
+    }
+    .speed-row {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      width: 100%;
+      padding-left: 0.2rem;
+    }
+    input[type=range] {
+      -webkit-appearance: none;
+      appearance: none;
+      flex: 1;
+      height: 3px;
+      background: #333;
+      border-radius: 2px;
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #fff;
+      cursor: pointer;
+      box-shadow: 0 0 0 1px #000, 0 0 8px rgba(156, 216, 255, 0.7);
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border: none;
+      border-radius: 50%;
+      background: #fff;
+      cursor: pointer;
+      box-shadow: 0 0 0 1px #000, 0 0 8px rgba(156, 216, 255, 0.7);
+    }
+    .mus { font-family: 'Bravura'; font-size: 1.25em; line-height: 1; vertical-align: -0.12em; padding: 0 0.12em; }
+    #tempo-pct {
+      font-size: 0.9rem;
+      font-style: italic;
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    /* --- controls --- */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.7rem 1.4rem;
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.6);
+      max-width: min(40rem, 100%);
+    }
+    .ctl { display: inline-flex; align-items: center; gap: 0.5em; }
+    .ctl input[type="number"] {
+      background: #000;
+      border: 1px solid #666;
+      color: #ddd;
+      font-family: inherit;
+      font-size: 0.95rem;
+      padding: 0.2em 0.35em;
+      width: 3.6em;
+    }
+    .ctl input[type="number"]:hover { border-color: #9cd8ff; }
+    .ctl select {
+      background: #000;
+      border: 1px solid #666;
+      color: #ddd;
+      font-family: inherit;
+      font-size: 0.95rem;
+      padding: 0.2em 0.3em;
+    }
+    .ctl select:hover { border-color: #9cd8ff; }
+    .ctl select:disabled, button:disabled {
+      opacity: 0.35;
+      cursor: default;
+      border-color: #444;
+    }
+    .ctl .dash { color: rgba(255, 255, 255, 0.35); }
+
+    button {
+      background: none;
+      border: 1px solid #666;
+      color: #ddd;
+      font-family: inherit;
+      font-size: 1rem;
+      padding: 0.35em 0.7em;
+      cursor: pointer;
+    }
+    button:hover { border-color: #9cd8ff; color: #fff; }
+    button:disabled:hover { border-color: #444; color: #ddd; }
+    #play {
+      font-size: 1.3rem;
+      padding: 0.4em 1.6em;
+      letter-spacing: 0.05em;
+    }
+    #play.playing { border-color: #9cd8ff; color: #9cd8ff; background: rgba(156, 216, 255, 0.12); }
+    #whole, #full-speed, #drone { font-size: 0.9rem; padding: 0.25em 0.55em; }
+    #whole.on, #drone.on { border-color: #9cd8ff; color: #9cd8ff; background: rgba(156, 216, 255, 0.12); }
+
+    .switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45em;
+      cursor: pointer;
+      user-select: none;
+    }
+    .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .switch .track {
+      width: 2.4em;
+      height: 1.2em;
+      border: 1px solid #666;
+      border-radius: 1em;
+      position: relative;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .switch .thumb {
+      position: absolute;
+      top: 50%;
+      left: 0.15em;
+      width: 0.9em;
+      height: 0.9em;
+      transform: translateY(-50%);
+      background: #ddd;
+      border-radius: 50%;
+      transition: left 0.15s, background 0.15s;
+    }
+    .switch input:checked + .track { background: #24506b; border-color: #9cd8ff; }
+    .switch input:checked + .track .thumb { left: calc(100% - 1.05em); background: #9cd8ff; }
+
+    /* The drone, as a footnote: a tonic to tune the passage against. */
+    .drone {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem 1.2rem;
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.6);
+      padding-top: 0.6rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      width: min(30rem, 100%);
+    }
+    .drone input[type=range] { width: 7rem; flex: none; }
+
+    /* Shown only when the page's scripts didn't run, or the passage data
+       doesn't add up — either way a page that looks fine and does nothing. */
+    #load-error {
+      margin: 0;
+      padding: 0.8rem 1rem;
+      max-width: min(34rem, 100%);
+      border: 1px solid rgba(232, 122, 122, 0.5);
+      color: #e8a0a0;
+      font-size: 1rem;
+      text-align: center;
+      line-height: 1.5;
+    }
+    #load-error a { color: #ffb066; }
+    #load-error .detail {
+      display: block;
+      margin-top: 0.4rem;
+      font-size: 0.8rem;
+      color: rgba(232, 160, 160, 0.7);
+      font-family: ui-monospace, monospace;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+  <a class="back" href="index.html">← back</a>
+
+  <h1>thumb position</h1>
+  <p class="hint">
+    the thumb lies across two strings and the fingers fall in a line above it.
+    each passage sounds as it lights up — read it in the clef it's written in,
+    then read it again in the other one.
+    <br>space starts and stops; ← → step through the passages; tap a note to hear it.
+  </p>
+
+  <p id="load-error" hidden>
+    this page didn't finish loading — its scripts never ran.
+    <a id="load-error-reload" href="">reload</a> to fetch a fresh copy.
+    <span class="detail" id="load-error-detail"></span>
+  </p>
+
+  <div class="pick">
+    <div class="pick-row">
+      <button id="prev" type="button" aria-label="previous passage">←</button>
+      <select id="passage" aria-label="passage"></select>
+      <button id="next" type="button" aria-label="next passage">→</button>
+    </div>
+    <p id="about"></p>
+    <p id="range-label"></p>
+  </div>
+
+  <div id="score"></div>
+
+  <div id="counter">
+    <div id="note"><span id="note-name"></span><span id="note-finger"></span></div>
+    <div id="count"><span id="count-bar">–</span><span id="count-beats"></span></div>
+    <span id="run"></span>
+  </div>
+
+  <button id="play" type="button">play</button>
+
+  <div class="speed">
+    <div class="speed-row">
+      <label class="ctl" for="tempo"><span class="mus">&#xE1D5;</span> =</label>
+      <input id="speed" type="range" min="30" max="240" step="1" value="60" aria-label="speed">
+      <input id="tempo" type="number" min="30" max="240" step="1" value="60" aria-label="tempo">
+      <button id="full-speed" type="button">mark</button>
+    </div>
+    <span id="tempo-pct"></span>
+  </div>
+
+  <div class="controls">
+    <span class="ctl">
+      read in
+      <select id="clef" aria-label="clef">
+        <option value="auto">the clef as written</option>
+        <option value="tenor">tenor clef</option>
+        <option value="treble">treble clef</option>
+        <option value="bass">bass clef</option>
+      </select>
+    </span>
+    <label class="switch">
+      <input id="fingerings" type="checkbox" checked>
+      <span class="track"><span class="thumb"></span></span>
+      fingerings
+    </label>
+    <span class="ctl">
+      measures
+      <select id="from" aria-label="first measure"></select>
+      <span class="dash">–</span>
+      <select id="to" aria-label="last measure"></select>
+      <button id="whole" type="button">all</button>
+    </span>
+  </div>
+
+  <div class="controls">
+    <label class="switch">
+      <input id="metronome" type="checkbox" checked>
+      <span class="track"><span class="thumb"></span></span>
+      metronome
+    </label>
+    <label class="switch">
+      <input id="count-in" type="checkbox" checked>
+      <span class="track"><span class="thumb"></span></span>
+      count-in
+    </label>
+    <label class="switch">
+      <input id="loop" type="checkbox" checked>
+      <span class="track"><span class="thumb"></span></span>
+      loop
+    </label>
+  </div>
+
+  <div class="drone">
+    <button id="drone" type="button">drone</button>
+    <label class="switch">
+      <input id="drone-fifth" type="checkbox">
+      <span class="track"><span class="thumb"></span></span>
+      fifth
+    </label>
+    <label class="ctl">
+      volume
+      <input id="drone-volume" type="range" min="0" max="0.4" step="0.01" value="0.1" aria-label="drone volume">
+    </label>
+  </div>
+
+  <script>
+    // Watch the scripts below. A phone has no console, so a script that fails
+    // to fetch (flaky connection, a stale or negative cache entry) leaves a
+    // page that looks fine and does nothing, with no way to tell why. Listen in
+    // the capture phase — resource load failures don't bubble — and report on
+    // the page if thumb.js never reached its last line.
+    window.__thumbProblems = [];
+    addEventListener('error', (e) => {
+      const src = e.target && e.target.src;
+      window.__thumbProblems.push(src ? 'could not load ' + src.split('/').pop() : (e.message || 'script error'));
+    }, true);
+    addEventListener('load', () => {
+      if (window.__thumbReady) return;
+      const box = document.getElementById('load-error');
+      const detail = document.getElementById('load-error-detail');
+      const again = document.getElementById('load-error-reload');
+      // A unique query is the one reload a cache can't answer from its own copy.
+      if (again) again.href = location.pathname + '?r=' + Date.now();
+      if (detail) detail.textContent = window.__thumbProblems.join('; ');
+      if (box) box.hidden = false;
+    });
+  </script>
+
+  <!-- Versioned so a cached script can never pair with newer markup: bump ?v=
+       whenever either file changes in a way the other depends on. audio.js is
+       at v=7 here because per-note durations in playSequence are newer than
+       the copy the other pages pinned. -->
+  <script src="audio.js?v=7"></script>
+  <script src="thumb.js?v=1"></script>
+</body>
+</html>
