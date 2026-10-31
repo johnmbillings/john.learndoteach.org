@@ -191,6 +191,88 @@ travels, and arrives before the next note is bowed, with the tone easing as the
 hand moves. `artic` lets the note after it re-articulate as a fresh bow on a new
 string. Everything else on the site passes no shape and is unaffected.
 
+## The thumb-position page
+
+`thumb.html` / `thumb.js`: a ladder of short passages for the left thumb, read
+in tenor and treble clef. Pick one from the dropdown, press play, and it sounds
+in the cello voice while the note being played lights up on the staff. The
+passages are in the order they're meant to be taken — the further down the
+list, the more they ask of the thumb, the ear or the eye:
+
+| | passage | where the thumb is | clef |
+|---|---|---|---|
+| 1–3 | the harmonics; three fingers on the A string; D major, one octave | the half-string harmonics (D and A) | tenor |
+| 4–7 | mary had a little lamb; twinkle; ode to joy; frère jacques | the same | tenor |
+| 8–9 | G major and ode to joy in G — the low 2nd finger | the same | tenor |
+| 10–11 | D major in broken thirds; arpeggios across the strings | the same | tenor |
+| 12 | thumb on G and D — G major, G to G | a fourth above the harmonics | tenor |
+| 13–17 | the same scale, tunes and thirds an octave up | the three-quarter harmonics (D and A, an octave up) | treble |
+| 18 | two octaves, D to D | both positions, with the shift between them | tenor → treble |
+
+Everything is data at the top of `thumb.js`. A passage is
+`{ id, name, clef, key, meter, targetBpm, position, about, measures }`;
+`position` is the finger for each pitch in that passage (`T` for the thumb,
+`0` for an open string) and which of the thumb's notes sit on a natural
+harmonic, so fingerings don't have to be typed note by note — a note can
+still carry its own finger, and its own harmonic mark, which win (passage 18
+does, because the same D is a 3rd finger going up and a thumb coming down,
+and the high A is a harmonic its position map doesn't know about). A bar is
+a list of events, `q('A3')`, `e('B3')`, `h('D4')`, `qd('F#3')`, `w('D3')` or
+`r('4')` for a rest, written with the same duration strings as the rhythm
+page; a bar may be `clefTo('treble', [...])` to change clef from there on.
+`checkPassages()` reports any bar that doesn't add up to its meter on the
+page rather than letting it play as something nobody wrote.
+
+Around the play button:
+
+- **read in** — the clef as written, or tenor, treble or bass for the whole
+  passage. The notes don't change; where they sit on the staff does. Reading a
+  tune you already know in the other clef is most of what learning a clef is.
+- **fingerings** and **harmonic circles** — each on or off, for reading
+  without the crutch. The circle sits over a thumb note that lies on a natural
+  harmonic (the half-string and three-quarter-string D and A), under the
+  thumb sign; where the thumb is a fourth up there is no harmonic and no
+  circle.
+- **measures** — a range to loop, as on the other practice pages.
+- **tempo** — a slider to the mark and a little past it; each passage
+  remembers the speed it was last taken at, and a new one starts at 70% of
+  its mark.
+- **metronome, count-in, loop** — as on the rhythm page.
+- **drone** — the tonic of the passage's key, low on the cello (D2 or G2),
+  with an optional fifth, from the shared drone in `audio.js`. Thirds in thumb
+  position are tuned against it.
+- **the readout** — the note sounding, by name with its octave (a tenor-clef
+  note misread by a third is the usual mistake, and the octave tells the two
+  apart) and its finger; the bar and beat; and how many passes and how long
+  the thumb has been down this run, which stays on the page after stopping.
+- **tap a note** to hear it on its own and see what it is.
+- **← →** step through the passages; **space** starts and stops. A link can
+  name a passage: `thumb.html?p=twinkle`.
+
+The engraving is drawn by the page with Bravura, like the rhythm builder's,
+because every note has to be a live element — but on a five-line staff with
+pitch: clefs (and clef changes, shown small before the barline), key
+signatures placed per clef, accidentals only where a note leaves the key,
+ledger lines, stems up or down by position (a beamed group goes by its
+average), flags, beams, dots, and over each note its harmonic circle and
+fingering. Bars are
+packed into systems at a graded, not proportional, spacing, as many as fit
+the width, and stretched to fill the line; on a phone the scale drops so two
+bars of quarters fit a line.
+
+Playback is the natural cello voice from `audio.js`. Notes between rests are
+one bowed line — a single voice gliding from pitch to pitch, each note held
+for its own length — which is what the `durations` option added to
+`playSequence` is for: a per-note list of onset spacings, for a line whose
+notes aren't all the same length. (Without it every note gets `step`, as
+before; nothing else on the site passes it.) A repeated note is
+re-articulated harder so two D's don't blur into one.
+
+The same cache rule as the shifting page applies: `thumb.html` loads its
+scripts with a `?v=` query, so **bump it whenever either file changes in a
+way the other depends on**, and the inline watcher reports on the page if
+`thumb.js` never reached its last line.
+
 ## The measure-practice pages
 
 One engine, one page per piece. `practice.js` is everything that isn't the

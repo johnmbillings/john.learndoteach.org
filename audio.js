@@ -283,7 +283,7 @@ const AudioKit = (() => {
   // at each boundary (EX.artic) before swelling back, and the pitch slides in
   // over a short portamento (EX.glide). A gentle vibrato fades in over the pass.
   function renderConnected(ctx, timbre, baseMidi, seq, o) {
-    const { start, step, gate, atk, release, EX, dynFor, timeFor, scheduleOnNote, shapeAt } = o;
+    const { start, step, gate, atk, release, EX, dynFor, timeFor, scheduleOnNote, shapeAt, offsets, durs, total } = o;
     const n = seq.length;
     const osc = ctx.createOscillator();
     const voice = timbre.makeFilters(ctx);
@@ -294,6 +294,7 @@ const AudioKit = (() => {
 
     // Keep the glide and the articulation dip inside one note so fast tempos
     // don't smear or overlap into the neighbour.
+    // (With per-note durations, the shortest note sets the clamps.)
     const glide = Math.min(EX.glide, step * 0.4);
     const dipLead = Math.min(0.012, step * 0.15);
     const dipTc = Math.min(0.006, step * 0.08);
@@ -309,8 +310,9 @@ const AudioKit = (() => {
     function scheduleTail(i, t, peakHere) {
       const tail = (shapeAt(i) || {}).tail;
       if (!tail) return;
-      const at = Math.max(0.01, Math.min(tail.at, step - 0.03));
-      const over = Math.max(0.02, Math.min(tail.over, step - at - 0.01));
+      const len = durs[i];
+      const at = Math.max(0.01, Math.min(tail.at, len - 0.03));
+      const over = Math.max(0.02, Math.min(tail.over, len - at - 0.01));
       const to = midiToFreq(baseMidi + seq[i] + tail.semis);
       osc.frequency.setTargetAtTime(to, t + at, over / 4);
       osc.frequency.setValueAtTime(to, t + at + over);
@@ -344,7 +346,7 @@ const AudioKit = (() => {
       gain.gain.setTargetAtTime(dip, Math.max(start + atk, t - dipLead), dipTc); // ease down into the new note
       gain.gain.setTargetAtTime(p, t + 0.004, recTc);                            // swell back up on it
       scheduleTail(i, t, p);
-      scheduleOnNote(seq[i], i, start + i * step);
+      scheduleOnNote(seq[i], i, start + offsets[i]);
     }
 
     // Vibrato: an LFO on the pitch whose depth fades in across the pass, so
@@ -356,12 +358,12 @@ const AudioKit = (() => {
       const midHz = midiToFreq(baseMidi + seq[Math.floor(n / 2)]);
       lfo.frequency.value = EX.vibRate;
       lfoGain.gain.setValueAtTime(0.0001, start);
-      lfoGain.gain.linearRampToValueAtTime(midHz * EX.vib, start + Math.min(0.6, n * step * 0.5));
+      lfoGain.gain.linearRampToValueAtTime(midHz * EX.vib, start + Math.min(0.6, total * 0.5));
       lfo.connect(lfoGain).connect(osc.frequency);
       lfo.start(start);
     }
 
-    const end = start + n * step;
+    const end = start + total;
     gain.gain.setTargetAtTime(0.0001, end - release, release / 2);
     const stopAt = end + release * 3 + 0.05;
     osc.start(start);
@@ -373,7 +375,10 @@ const AudioKit = (() => {
   }
 
   // Play a sequence of semitone offsets from baseMidi with `instr`'s voice.
-  // opts: step (onset spacing, s), gate (sounding length, s), attack (s),
+  // opts: step (onset spacing, s), durations (per-note onset spacing, s — an
+  // array as long as seq, for a line whose notes aren't all one length; `step`
+  // then only sets the shortest-note clamps, and `gate` is read as a fraction of
+  // each note's own length), gate (sounding length, s), attack (s),
   // peak (gain), sustain (0 = plucked decay over the whole gate; >0 = hold at
   // that fraction of peak until a short release — for portato/legato), release
   // (release length, s), onNote(semi, i) fired as each note sounds, when
@@ -395,8 +400,16 @@ const AudioKit = (() => {
     if (ctx.state !== 'running') { try { ctx.resume(); } catch (e) {} }
     const timbre = instr.timbre;
     const EX = instr.expression; // null = plain, un-phrased playback
-    const step = opts.step != null ? opts.step : 0.42;
-    const gate = Math.max(opts.gate != null ? opts.gate : step * 0.92, 0.04);
+    // Per-note lengths: either every note gets `step`, or the caller's list.
+    const varied = Array.isArray(opts.durations) && opts.durations.length === seq.length && seq.length > 0;
+    const durs = varied ? opts.durations.map(d => Math.max(0.02, Number(d) || 0.02)) : null;
+    const step = varied ? Math.min(...durs) : (opts.step != null ? opts.step : 0.42);
+    const offsets = [];
+    let total = 0;
+    seq.forEach((_, i) => { offsets.push(total); total += varied ? durs[i] : step; });
+    const gateFrac = varied ? Math.min(1, opts.gate != null ? opts.gate : 0.92) : null;
+    const gateFor = (i) => varied ? Math.max(durs[i] * gateFrac, 0.04) : gate;
+    const gate = Math.max(opts.gate != null && !varied ? opts.gate : step * 0.92, 0.04);
     const attack = opts.attack != null ? opts.attack : 0.02;
     const peak = opts.peak != null ? opts.peak : 0.16;
     const sustain = opts.sustain != null ? opts.sustain : 0;
@@ -436,7 +449,7 @@ const AudioKit = (() => {
     // Micro-timing: nudge onsets off the grid, but never the first note of a
     // pass, so loop seams stay locked and the tonic lands on the beat.
     function timeFor(i) {
-      const base = start + i * step;
+      const base = start + offsets[i];
       if (!EX || EX.timing === 0 || i === 0) return base;
       return base + (Math.random() * 2 - 1) * EX.timing;
     }
@@ -451,12 +464,14 @@ const AudioKit = (() => {
 
     if (connected) {
       renderConnected(ctx, timbre, baseMidi, seq, {
-        start, step, gate, atk, release, peak, EX, dynFor, timeFor, scheduleOnNote, shapeAt,
+        start, step, gate: gateFor(0), atk, release, peak, EX, dynFor, timeFor, scheduleOnNote, shapeAt,
+        offsets, durs: durs || seq.map(() => step), total,
       });
     } else {
       seq.forEach((semi, i) => {
         const t = timeFor(i);
         const p = dynFor(semi, i);
+        const gate = gateFor(i);
         const osc = ctx.createOscillator();
         const voice = timbre.makeFilters(ctx);
         const gain = ctx.createGain();
@@ -490,13 +505,13 @@ const AudioKit = (() => {
     // ticks under a whole note). Round the pass to a whole number of beats so the
     // grid resets cleanly at each loop seam, keeping the tonic on the downbeat.
     if (opts.clickInterval > 0) {
-      const dur = seq.length * step;
+      const dur = total;
       const beats = Math.max(1, Math.round(dur / opts.clickInterval));
       for (let b = 0; b < beats; b++) {
         scheduleClick(ctx, start + b * opts.clickInterval, !!opts.clickAccent && b === 0);
       }
     }
-    return start + seq.length * step;
+    return start + total;
   }
 
   // Build an instrument from a profile: { name, timbre, expression? }. Returns
