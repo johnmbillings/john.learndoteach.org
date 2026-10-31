@@ -211,10 +211,12 @@ list, the more they ask of the thumb, the ear or the eye:
 
 Everything is data at the top of `thumb.js`. A passage is
 `{ id, name, clef, key, meter, targetBpm, position, about, measures }`;
-`position` maps each pitch to the finger that plays it in that passage (`T`
-for the thumb, `0` for an open string), so fingerings don't have to be typed
-note by note — a note can still carry its own, which wins (passage 18 does,
-because the same D is a 3rd finger going up and a thumb coming down). A bar is
+`position` is the finger for each pitch in that passage (`T` for the thumb,
+`0` for an open string) and which of the thumb's notes sit on a natural
+harmonic, so fingerings don't have to be typed note by note — a note can
+still carry its own finger, and its own harmonic mark, which win (passage 18
+does, because the same D is a 3rd finger going up and a thumb coming down,
+and the high A is a harmonic its position map doesn't know about). A bar is
 a list of events, `q('A3')`, `e('B3')`, `h('D4')`, `qd('F#3')`, `w('D3')` or
 `r('4')` for a rest, written with the same duration strings as the rhythm
 page; a bar may be `clefTo('treble', [...])` to change clef from there on.
@@ -226,7 +228,11 @@ Around the play button:
 - **read in** — the clef as written, or tenor, treble or bass for the whole
   passage. The notes don't change; where they sit on the staff does. Reading a
   tune you already know in the other clef is most of what learning a clef is.
-- **fingerings** — on or off, for reading without the crutch.
+- **fingerings** and **harmonic circles** — each on or off, for reading
+  without the crutch. The circle sits over a thumb note that lies on a natural
+  harmonic (the half-string and three-quarter-string D and A), under the
+  thumb sign; where the thumb is a fourth up there is no harmonic and no
+  circle.
 - **measures** — a range to loop, as on the other practice pages.
 - **tempo** — a slider to the mark and a little past it; each passage
   remembers the speed it was last taken at, and a new one starts at 70% of
@@ -248,7 +254,8 @@ because every note has to be a live element — but on a five-line staff with
 pitch: clefs (and clef changes, shown small before the barline), key
 signatures placed per clef, accidentals only where a note leaves the key,
 ledger lines, stems up or down by position (a beamed group goes by its
-average), flags, beams, dots, and the fingering over each note. Bars are
+average), flags, beams, dots, and over each note its harmonic circle and
+fingering. Bars are
 packed into systems at a graded, not proportional, spacing, as many as fit
 the width, and stretched to fill the line; on a phone the scale drops so two
 bars of quarters fit a line.

@@ -73,8 +73,10 @@ function parsePitch(text) {
 }
 
 // Event builders. A finger is 'T' (the thumb), '0' (open string) or '1'–'4';
-// left off, it comes from the passage's position map.
-const n = (pitch, dur, finger) => Object.assign(parseDur(dur), { sound: true, pitch: parsePitch(pitch), finger: finger != null ? String(finger) : null });
+// left off, it comes from the passage's position map. `harm` marks a note
+// that sits on a natural harmonic (shown as a small circle); left off, a thumb
+// note gets it when the position says the thumb is on one.
+const n = (pitch, dur, finger, harm) => Object.assign(parseDur(dur), { sound: true, pitch: parsePitch(pitch), finger: finger != null ? String(finger) : null, harm: harm != null ? !!harm : null });
 const r = (dur) => Object.assign(parseDur(dur), { sound: false });
 const w = (p, f) => n(p, '1', f);
 const h = (p, f) => n(p, '2', f);
@@ -88,25 +90,38 @@ const clefTo = (clef, events) => ({ clef, events });
 // 1, 2, 3 a whole step, a whole (or half) step and a half step up, on both
 // strings at once.
 
+// A position is the finger for each pitch, and which of the thumb's notes sit
+// on a natural harmonic — those get a circle over them.
+
 // The thumb at the half-string harmonics: D on the D string, A on the A. The
 // first thumb position everyone learns, because the harmonic tells the thumb
 // where it is.
 const AT_HALF = {
-  D3: 'T', E3: '1', F3: '2', 'F#3': '2', G3: '3',
-  A3: 'T', B3: '1', C4: '2', 'C#4': '2', D4: '3',
-  A2: '0', D2: '0',
+  fingers: {
+    D3: 'T', E3: '1', F3: '2', 'F#3': '2', G3: '3',
+    A3: 'T', B3: '1', C4: '2', 'C#4': '2', D4: '3',
+    A2: '0', D2: '0',
+  },
+  harmonics: ['D3', 'A3'],
 };
-// The thumb a fourth above the harmonics: G on the D string, D on the A.
+// The thumb a fourth above the harmonics: G on the D string, D on the A — no
+// harmonic under it; the hand has to know where it is.
 const AT_FOURTH = {
-  G3: 'T', A3: '1', B3: '2', C4: '3',
-  D4: 'T', E4: '1', F4: '2', 'F#4': '2', G4: '3',
+  fingers: {
+    G3: 'T', A3: '1', B3: '2', C4: '3',
+    D4: 'T', E4: '1', F4: '2', 'F#4': '2', G4: '3',
+  },
+  harmonics: [],
 };
 // The thumb at the three-quarter harmonics, an octave above the first: the same
 // notes as AT_HALF, an octave up, with the fingers closer together.
 const AT_QUARTER = {
-  D4: 'T', E4: '1', F4: '2', 'F#4': '2', G4: '3',
-  A4: 'T', B4: '1', C5: '2', 'C#5': '2', D5: '3',
-  A3: '0',
+  fingers: {
+    D4: 'T', E4: '1', F4: '2', 'F#4': '2', G4: '3',
+    A4: 'T', B4: '1', C5: '2', 'C#5': '2', D5: '3',
+    A3: '0',
+  },
+  harmonics: ['D4', 'A4'],
 };
 
 // --- the passages ------------------------------------------------------------
@@ -384,9 +399,9 @@ const PASSAGES = [
     measures: [
       [q('D3', 'T'), q('E3', '1'), q('F#3', '2'), q('G3', '3')],
       [q('A3', 'T'), q('B3', '1'), q('C#4', '2'), q('D4', '3')],
-      clefTo('treble', [q('E4', '1'), q('F#4', '2'), q('G4', '3'), q('A4', 'T')]),
+      clefTo('treble', [q('E4', '1'), q('F#4', '2'), q('G4', '3'), q('A4', 'T', true)]),
       [q('B4', '1'), q('C#5', '2'), h('D5', '3')],
-      [q('D5', '3'), q('C#5', '2'), q('B4', '1'), q('A4', 'T')],
+      [q('D5', '3'), q('C#5', '2'), q('B4', '1'), q('A4', 'T', true)],
       [q('G4', '3'), q('F#4', '2'), q('E4', '1'), q('D4', 'T')],
       clefTo('tenor', [q('C#4', '2'), q('B3', '1'), q('A3', 'T'), q('G3', '3')]),
       [q('F#3', '2'), q('E3', '1'), h('D3', 'T')],
@@ -401,7 +416,9 @@ PASSAGES.forEach(p => {
     const bar = Array.isArray(m) ? { events: m } : Object.assign({}, m);
     bar.n = i + 1;
     bar.events.forEach(ev => {
-      if (ev.sound && ev.finger == null) ev.finger = p.position[ev.pitch.text] != null ? p.position[ev.pitch.text] : '';
+      if (!ev.sound) return;
+      if (ev.finger == null) ev.finger = p.position.fingers[ev.pitch.text] != null ? p.position.fingers[ev.pitch.text] : '';
+      if (ev.harm == null) ev.harm = ev.finger === 'T' && p.position.harmonics.includes(ev.pitch.text);
     });
     return bar;
   });
@@ -417,6 +434,7 @@ let toIdx = 0;
 let tempoBpm = 60;
 let clefMode = 'auto';      // 'auto' (as written), or 'tenor' / 'treble' / 'bass'
 let fingeringsOn = true;
+let harmonicsOn = true;      // the circles over thumb notes that sit on a harmonic
 let metronomeOn = true;
 let countIn = true;
 let loopOn = true;
@@ -511,6 +529,7 @@ const G = {
   digits: ['', '', '', '', '', '', '', '', '', ''],
   sharp: '', flat: '', natural: '',
   thumb: '',
+  harmonic: '',
   fingers: { '0': '', '1': '', '2': '', '3': '', '4': '' },
   quarterNote: '',
 };
@@ -733,12 +752,18 @@ function engrave() {
             const dy = ev.pos % 2 === 0 ? y - SP / 2 : y;   // a dot sits in a space
             inner.push(glyph('gl dot', right + 0.3 * SP + d * 0.55 * SP, dy, G.dot));
           }
-          // The fingering, over the note: the thumb's sign or a digit. It rides
-          // above whatever the note reaches up to.
+          // Over the note: a circle if it sits on a harmonic, and above that
+          // the fingering — the thumb's sign or a digit. They ride above
+          // whatever the note reaches up to.
+          let fy = Math.min(FING_LINE, headTop - 0.7 * SP);
+          if (harmonicsOn && ev.harm) {
+            inner.push(glyph('fing harm', ev.x + headW / 2, fy, G.harmonic, 'middle'));
+            reach(fy - 1.3 * SP, null);
+            fy -= 1.35 * SP;
+          }
           if (fingeringsOn && ev.finger) {
             const fg = ev.finger === 'T' ? G.thumb : G.fingers[ev.finger];
             if (fg) {
-              const fy = Math.min(FING_LINE, headTop - 0.7 * SP);
               inner.push(glyph('fing', ev.x + headW / 2, fy, fg, 'middle'));
               reach(fy - 1.6 * SP, null);
             }
@@ -861,7 +886,8 @@ function showNote(ev) {
   const fing = document.getElementById('note-finger');
   if (name) name.textContent = ev && ev.sound ? ev.pitch.name : (ev ? 'rest' : '');
   if (fing) {
-    const f = ev && ev.sound && ev.finger ? (ev.finger === 'T' ? 'thumb' : ev.finger === '0' ? 'open' : ev.finger) : '';
+    let f = ev && ev.sound && ev.finger ? (ev.finger === 'T' ? 'thumb' : ev.finger === '0' ? 'open' : ev.finger) : '';
+    if (ev && ev.sound && ev.harm) f += (f ? ', ' : '') + 'harmonic';
     fing.textContent = f;
   }
 }
@@ -1237,6 +1263,14 @@ function setFingerings(on) {
   savePrefs();
 }
 
+function setHarmonics(on) {
+  harmonicsOn = !!on;
+  const el = control('harmonics');
+  if (el) el.checked = harmonicsOn;
+  engrave();
+  savePrefs();
+}
+
 function wireControls() {
   const pick = control('passage');
   if (pick) {
@@ -1259,6 +1293,8 @@ function wireControls() {
   if (clef) clef.addEventListener('change', () => setClefMode(clef.value));
   const fing = control('fingerings');
   if (fing) fing.addEventListener('change', () => setFingerings(fing.checked));
+  const harm = control('harmonics');
+  if (harm) harm.addEventListener('change', () => setHarmonics(harm.checked));
 
   const from = control('from');
   const to = control('to');
@@ -1338,6 +1374,7 @@ function savePrefs() {
       tempos,
       clef: clefMode,
       fingerings: fingeringsOn,
+      harmonics: harmonicsOn,
       metronome: metronomeOn, countIn, loop: loopOn,
       droneFifth, droneVolume,
     }));
@@ -1355,12 +1392,13 @@ function applyPrefs() {
   }
   if (CLEFS[p.clef]) clefMode = p.clef;
   if (typeof p.fingerings === 'boolean') fingeringsOn = p.fingerings;
+  if (typeof p.harmonics === 'boolean') harmonicsOn = p.harmonics;
   if (typeof p.metronome === 'boolean') metronomeOn = p.metronome;
   if (typeof p.countIn === 'boolean') countIn = p.countIn;
   if (typeof p.loop === 'boolean') loopOn = p.loop;
   if (typeof p.droneFifth === 'boolean') droneFifth = p.droneFifth;
   if (Number.isFinite(p.droneVolume)) droneVolume = Math.max(0, Math.min(0.4, p.droneVolume));
-  [['metronome', metronomeOn], ['count-in', countIn], ['loop', loopOn], ['fingerings', fingeringsOn]].forEach(([id, v]) => {
+  [['metronome', metronomeOn], ['count-in', countIn], ['loop', loopOn], ['fingerings', fingeringsOn], ['harmonics', harmonicsOn]].forEach(([id, v]) => {
     const el = control(id);
     if (el) el.checked = v;
   });

@@ -119,6 +119,7 @@
     #score .stem { stroke: #ececec; stroke-width: 1.3; }
     #score .beam { fill: #ececec; }
     #score .fing { font-family: 'Bravura'; fill: rgba(255, 255, 255, 0.72); }
+    #score .harm { fill: rgba(255, 255, 255, 0.62); }
     #score .bar-no {
       font-family: "Cormorant Garamond", serif;
       font-size: 0.42em;
@@ -432,6 +433,11 @@
       <span class="track"><span class="thumb"></span></span>
       fingerings
     </label>
+    <label class="switch">
+      <input id="harmonics" type="checkbox" checked>
+      <span class="track"><span class="thumb"></span></span>
+      harmonic circles
+    </label>
     <span class="ctl">
       measures
       <select id="from" aria-label="first measure"></select>
@@ -500,6 +506,6 @@
        at v=7 here because per-note durations in playSequence are newer than
        the copy the other pages pinned. -->
   <script src="audio.js?v=7"></script>
-  <script src="thumb.js?v=1"></script>
+  <script src="thumb.js?v=2"></script>
 </body>
 </html>
