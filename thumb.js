@@ -3,11 +3,18 @@
 // The hand in thumb position is a frame: the thumb lies across two strings and
 // the fingers 1, 2 and 3 fall in a line above it, a whole step, a whole step
 // (or a half) and a half step apart. Every passage here is played with that
-// frame, first at the half-string harmonics where the thumb finds its spot by
-// ear (D and A, written in tenor clef), later a fourth higher, then at the
-// three-quarter harmonics an octave up (written in treble). Each passage sounds
-// as written and lights up note by note as it goes, so the eye learns where a
-// pitch sits on each staff while the hand learns where it sits on the string.
+// frame at the half-string harmonics, where the thumb finds its spot by ear —
+// first on the D and A strings (D4 and A4, an octave above the open strings,
+// which the treble clef holds comfortably), then the same frame one pair of
+// strings lower on G and D (G3 to G4: tenor clef), then on C and G (C3 to C4:
+// tenor again), then across all four strings at once, and at the end up at the
+// three-quarter harmonics. Each passage sounds as written and lights up note by
+// note as it goes, so the eye learns where a pitch sits on each staff while the
+// hand learns where it sits on the string.
+//
+// Octaves are scientific: the cello's open strings are C2 G2 D3 A3, so the
+// open A sits on the middle line of the tenor staff, the A-string harmonic an
+// octave above it.
 //
 // Everything on the page is data at the top of this file. A passage is:
 //
@@ -86,42 +93,40 @@ const e = (p, f) => n(p, '8', f);
 const clefTo = (clef, events) => ({ clef, events });
 
 // --- the hand ----------------------------------------------------------------
-// Three places the thumb goes. The pattern is the same in each: thumb, then
-// 1, 2, 3 a whole step, a whole (or half) step and a half step up, on both
-// strings at once.
+// The thumb at the half-string harmonics, on each pair of strings. The pattern
+// is the same in each: thumb, then 1, 2, 3 a whole step, a whole (or half)
+// step and a half step up, on both strings at once. A position is the finger
+// for each pitch, and which of the thumb's notes sit on a natural harmonic —
+// those get a circle over them.
 
-// A position is the finger for each pitch, and which of the thumb's notes sit
-// on a natural harmonic — those get a circle over them.
-
-// The thumb at the half-string harmonics: D on the D string, A on the A. The
-// first thumb position everyone learns, because the harmonic tells the thumb
-// where it is.
-const AT_HALF = {
-  fingers: {
-    D3: 'T', E3: '1', F3: '2', 'F#3': '2', G3: '3',
-    A3: 'T', B3: '1', C4: '2', 'C#4': '2', D4: '3',
-    A2: '0', D2: '0',
-  },
-  harmonics: ['D3', 'A3'],
-};
-// The thumb a fourth above the harmonics: G on the D string, D on the A — no
-// harmonic under it; the hand has to know where it is.
-const AT_FOURTH = {
-  fingers: {
-    G3: 'T', A3: '1', B3: '2', C4: '3',
-    D4: 'T', E4: '1', F4: '2', 'F#4': '2', G4: '3',
-  },
-  harmonics: [],
-};
-// The thumb at the three-quarter harmonics, an octave above the first: the same
-// notes as AT_HALF, an octave up, with the fingers closer together.
-const AT_QUARTER = {
+// On the D and A strings: D4 and A4, the octave harmonics. The first thumb
+// position everyone learns, on the two thinnest strings.
+const ON_DA = {
   fingers: {
     D4: 'T', E4: '1', F4: '2', 'F#4': '2', G4: '3',
     A4: 'T', B4: '1', C5: '2', 'C#5': '2', D5: '3',
-    A3: '0',
+    A3: '0', D3: '0',
   },
   harmonics: ['D4', 'A4'],
+};
+// On the G and D strings: G3 and D4. The same frame, thicker strings, more
+// work for the thumb.
+const ON_GD = {
+  fingers: {
+    G3: 'T', A3: '1', B3: '2', 'Bb3': '2', C4: '3',
+    D4: 'T', E4: '1', F4: '2', 'F#4': '2', G4: '3',
+    D3: '0', G2: '0',
+  },
+  harmonics: ['G3', 'D4'],
+};
+// On the C and G strings: C3 and G3. The thumb's real test.
+const ON_CG = {
+  fingers: {
+    C3: 'T', D3: '1', E3: '2', 'Eb3': '2', F3: '3',
+    G3: 'T', A3: '1', B3: '2', 'Bb3': '2', C4: '3',
+    G2: '0', C2: '0',
+  },
+  harmonics: ['C3', 'G3'],
 };
 
 // --- the passages ------------------------------------------------------------
@@ -132,206 +137,33 @@ const PASSAGES = [
   {
     id: 'harmonics',
     name: '1 · the harmonics',
-    clef: 'tenor', key: 'D', meter: [4, 4], targetBpm: 72, position: AT_HALF,
-    about: 'Lay the thumb flat across the D and A strings at the middle of the string, where the octave harmonics ring: D and A. Nothing else moves. Find the spot, hear it, and keep the thumb there for the whole passage.',
-    measures: [
-      [w('D3')], [w('A3')], [h('D3'), h('A3')], [h('A3'), h('D3')], [h('D3'), h('A3')], [w('D3')],
-    ],
-  },
-  {
-    id: 'three-fingers',
-    name: '2 · three fingers on the A string',
-    clef: 'tenor', key: 'D', meter: [4, 4], targetBpm: 80, position: AT_HALF,
-    about: 'The thumb stays on the harmonic A and the fingers fall above it: 1 a whole step up on B, 2 another whole step on C♯, 3 a half step on D. The thumb keeps its weight on the string even while a finger plays — that is the endurance being built.',
-    measures: [
-      [q('A3'), q('B3'), q('C#4'), q('D4')],
-      [q('D4'), q('C#4'), q('B3'), q('A3')],
-      [q('A3'), q('C#4'), q('B3'), q('D4')],
-      [q('C#4'), q('B3'), h('A3')],
-      [q('A3'), q('B3'), q('A3'), q('C#4')],
-      [q('A3'), q('D4'), q('A3'), q('C#4')],
-      [q('B3'), q('D4'), q('C#4'), q('B3')],
-      [w('A3')],
-    ],
-  },
-  {
-    id: 'd-major',
-    name: '3 · D major, one octave',
-    clef: 'tenor', key: 'D', meter: [4, 4], targetBpm: 84, position: AT_HALF,
-    about: 'The same frame on both strings: thumb, 1, 2, 3 on the D string, then thumb, 1, 2, 3 on the A. One octave of D major without the hand moving at all. Listen for the octave between the two thumb notes.',
-    measures: [
-      [q('D3'), q('E3'), q('F#3'), q('G3')],
-      [q('A3'), q('B3'), q('C#4'), q('D4')],
-      [q('D4'), q('C#4'), q('B3'), q('A3')],
-      [q('G3'), q('F#3'), q('E3'), q('D3')],
-    ],
-  },
-  {
-    id: 'mary',
-    name: '4 · mary had a little lamb',
-    clef: 'tenor', key: 'D', meter: [4, 4], targetBpm: 96, position: AT_HALF,
-    about: 'A tune on the D string with one visit to the thumb on A. Read it off the staff: the tenor clef puts middle C on the fourth line, so D, E and F♯ sit on the first line, the first space and the second line.',
-    measures: [
-      [q('F#3'), q('E3'), q('D3'), q('E3')],
-      [q('F#3'), q('F#3'), h('F#3')],
-      [q('E3'), q('E3'), h('E3')],
-      [q('F#3'), q('A3'), h('A3')],
-      [q('F#3'), q('E3'), q('D3'), q('E3')],
-      [q('F#3'), q('F#3'), q('F#3'), q('F#3')],
-      [q('E3'), q('E3'), q('F#3'), q('E3')],
-      [w('D3')],
-    ],
-  },
-  {
-    id: 'twinkle',
-    name: '5 · twinkle',
-    clef: 'tenor', key: 'D', meter: [4, 4], targetBpm: 100, position: AT_HALF,
-    about: 'Both strings now, and the first real string crossings under the thumb: D to A is thumb to thumb, G to F♯ is 3 to 2 on the D string. Keep the thumb down across both strings through the crossings.',
-    measures: [
-      [q('D3'), q('D3'), q('A3'), q('A3')],
-      [q('B3'), q('B3'), h('A3')],
-      [q('G3'), q('G3'), q('F#3'), q('F#3')],
-      [q('E3'), q('E3'), h('D3')],
-      [q('A3'), q('A3'), q('G3'), q('G3')],
-      [q('F#3'), q('F#3'), h('E3')],
-      [q('A3'), q('A3'), q('G3'), q('G3')],
-      [q('F#3'), q('F#3'), h('E3')],
-      [q('D3'), q('D3'), q('A3'), q('A3')],
-      [q('B3'), q('B3'), h('A3')],
-      [q('G3'), q('G3'), q('F#3'), q('F#3')],
-      [q('E3'), q('E3'), h('D3')],
-    ],
-  },
-  {
-    id: 'ode',
-    name: '6 · ode to joy',
-    clef: 'tenor', key: 'D', meter: [4, 4], targetBpm: 100, position: AT_HALF,
-    about: 'Beethoven\'s tune in D, all of it under the one hand. The middle section has eighths and the open A string below the staff; the dotted quarter at the end of each phrase is where a steady thumb shows.',
-    measures: [
-      [q('F#3'), q('F#3'), q('G3'), q('A3')],
-      [q('A3'), q('G3'), q('F#3'), q('E3')],
-      [q('D3'), q('D3'), q('E3'), q('F#3')],
-      [qd('F#3'), e('E3'), h('E3')],
-      [q('F#3'), q('F#3'), q('G3'), q('A3')],
-      [q('A3'), q('G3'), q('F#3'), q('E3')],
-      [q('D3'), q('D3'), q('E3'), q('F#3')],
-      [qd('E3'), e('D3'), h('D3')],
-      [q('E3'), q('E3'), q('F#3'), q('D3')],
-      [q('E3'), e('F#3'), e('G3'), q('F#3'), q('D3')],
-      [q('E3'), e('F#3'), e('G3'), q('F#3'), q('E3')],
-      [q('D3'), q('E3'), h('A2')],
-      [q('F#3'), q('F#3'), q('G3'), q('A3')],
-      [q('A3'), q('G3'), q('F#3'), q('E3')],
-      [q('D3'), q('D3'), q('E3'), q('F#3')],
-      [qd('E3'), e('D3'), h('D3')],
-    ],
-  },
-  {
-    id: 'frere',
-    name: '7 · frère jacques',
-    clef: 'tenor', key: 'D', meter: [4, 4], targetBpm: 104, position: AT_HALF,
-    about: 'Eighths across the two strings, and the open A at the end, a ledger line below the staff. The round is a good one to loop: by the third pass the thumb has been down for a while.',
-    measures: [
-      [q('D3'), q('E3'), q('F#3'), q('D3')],
-      [q('D3'), q('E3'), q('F#3'), q('D3')],
-      [q('F#3'), q('G3'), h('A3')],
-      [q('F#3'), q('G3'), h('A3')],
-      [e('A3'), e('B3'), e('A3'), e('G3'), q('F#3'), q('D3')],
-      [e('A3'), e('B3'), e('A3'), e('G3'), q('F#3'), q('D3')],
-      [q('D3'), q('A2'), h('D3')],
-      [q('D3'), q('A2'), h('D3')],
-    ],
-  },
-  {
-    id: 'g-major',
-    name: '8 · the low second finger',
-    clef: 'tenor', key: 'G', meter: [4, 4], targetBpm: 84, position: AT_HALF,
-    about: 'G major from the same thumb position. On the A string the 2nd finger now sits a half step above the 1st (C natural, not C♯) while on the D string it stays a whole step up (F♯). One sharp in the signature instead of two: read the key before the notes.',
-    measures: [
-      [q('D3'), q('E3'), q('F#3'), q('G3')],
-      [q('A3'), q('B3'), q('C4'), q('D4')],
-      [q('D4'), q('C4'), q('B3'), q('A3')],
-      [q('G3'), q('F#3'), q('E3'), q('D3')],
-      [q('A3'), q('B3'), q('C4'), q('B3')],
-      [q('A3'), q('C4'), q('B3'), q('A3')],
-      [q('A3'), q('B3'), q('C4'), q('D4')],
-      [q('C4'), q('B3'), h('A3')],
-    ],
-  },
-  {
-    id: 'ode-g',
-    name: '9 · ode to joy in G',
-    clef: 'tenor', key: 'G', meter: [4, 4], targetBpm: 100, position: AT_HALF,
-    about: 'The tune again, a fourth higher, so the whole of it sits on the A string under the thumb with the low 2. The notes on the page have moved; the hand hasn\'t.',
-    measures: [
-      [q('B3'), q('B3'), q('C4'), q('D4')],
-      [q('D4'), q('C4'), q('B3'), q('A3')],
-      [q('G3'), q('G3'), q('A3'), q('B3')],
-      [qd('B3'), e('A3'), h('A3')],
-      [q('B3'), q('B3'), q('C4'), q('D4')],
-      [q('D4'), q('C4'), q('B3'), q('A3')],
-      [q('G3'), q('G3'), q('A3'), q('B3')],
-      [qd('A3'), e('G3'), h('G3')],
-    ],
-  },
-  {
-    id: 'thirds',
-    name: '10 · D major in broken thirds',
-    clef: 'tenor', key: 'D', meter: [4, 4], targetBpm: 76, position: AT_HALF,
-    about: 'Thirds are where thumb-position intonation is won or lost: thumb to 2 is a major third on each string, and the crossing pairs (G to B, 3 on D to 1 on A) have to match them. Put the drone on D and tune every third to it.',
-    measures: [
-      [q('D3'), q('F#3'), q('E3'), q('G3')],
-      [q('F#3'), q('A3'), q('G3'), q('B3')],
-      [q('A3'), q('C#4'), q('B3'), q('D4')],
-      [w('D4')],
-      [q('D4'), q('B3'), q('C#4'), q('A3')],
-      [q('B3'), q('G3'), q('A3'), q('F#3')],
-      [q('G3'), q('E3'), q('F#3'), q('D3')],
-      [w('D3')],
-    ],
-  },
-  {
-    id: 'arpeggios',
-    name: '11 · arpeggios across the strings',
-    clef: 'tenor', key: 'D', meter: [4, 4], targetBpm: 72, position: AT_HALF,
-    about: 'D and G arpeggios in eighths, crossing between the strings on every other note, with the open A below. The bow does the crossing; the thumb stays flat across both strings so the crossing never asks the hand to move.',
-    measures: [
-      [e('D3'), e('F#3'), e('A3'), e('D4'), e('A3'), e('F#3'), q('D3')],
-      [e('D3'), e('G3'), e('B3'), e('D4'), e('B3'), e('G3'), q('D3')],
-      [e('D3'), e('F#3'), e('A3'), e('D4'), e('A3'), e('F#3'), q('D3')],
-      [e('A2'), e('D3'), e('F#3'), e('A3'), e('F#3'), e('D3'), q('A2')],
-    ],
-  },
-  {
-    id: 'g-fourth',
-    name: '12 · thumb on G and D',
-    clef: 'tenor', key: 'G', meter: [4, 4], targetBpm: 84, position: AT_FOURTH,
-    about: 'The thumb leaves the harmonic for the first time: a fourth higher, on G and D, with no harmonic to find it by. The fingers keep their shape. G major from G to G, with the top G on a ledger line above the tenor staff.',
-    measures: [
-      [q('G3'), q('A3'), q('B3'), q('C4')],
-      [q('D4'), q('E4'), q('F#4'), q('G4')],
-      [q('G4'), q('F#4'), q('E4'), q('D4')],
-      [q('C4'), q('B3'), q('A3'), q('G3')],
-      [q('G3'), q('B3'), q('D4'), q('G4')],
-      [q('G4'), q('D4'), q('B3'), q('G3')],
-      [e('G3'), e('A3'), e('B3'), e('C4'), e('D4'), e('E4'), e('F#4'), e('G4')],
-      [e('G4'), e('F#4'), e('E4'), e('D4'), e('C4'), e('B3'), e('A3'), e('G3')],
-    ],
-  },
-  {
-    id: 'high-harmonics',
-    name: '13 · the high harmonics',
-    clef: 'treble', key: 'D', meter: [4, 4], targetBpm: 72, position: AT_QUARTER,
-    about: 'An octave above the first passage: the thumb at the three-quarter harmonics, D and A, an octave above the ones it started on. Written in treble clef now — D sits just under the staff, A in the second space.',
+    clef: 'treble', key: 'D', meter: [4, 4], targetBpm: 72, position: ON_DA,
+    about: 'Lay the thumb flat across the D and A strings at the middle of the string, where the octave harmonics ring: D and A, an octave above the open strings. Nothing else moves. Find the spot, hear it, and keep the thumb there for the whole passage. In treble clef the D sits just under the staff and the A in the second space.',
     measures: [
       [w('D4')], [w('A4')], [h('D4'), h('A4')], [h('A4'), h('D4')], [h('D4'), h('A4')], [w('D4')],
     ],
   },
   {
-    id: 'd-major-high',
-    name: '14 · D major, an octave up',
-    clef: 'treble', key: 'D', meter: [4, 4], targetBpm: 84, position: AT_QUARTER,
-    about: 'The one-octave scale again, from the high harmonics. The frame is the same, but the fingers sit closer together up here, and the ear has to hear the smaller steps.',
+    id: 'three-fingers',
+    name: '2 · three fingers on the A string',
+    clef: 'treble', key: 'D', meter: [4, 4], targetBpm: 80, position: ON_DA,
+    about: 'The thumb stays on the harmonic A and the fingers fall above it: 1 a whole step up on B, 2 another whole step on C♯, 3 a half step on D. The thumb keeps its weight on the string even while a finger plays — that is the endurance being built.',
+    measures: [
+      [q('A4'), q('B4'), q('C#5'), q('D5')],
+      [q('D5'), q('C#5'), q('B4'), q('A4')],
+      [q('A4'), q('C#5'), q('B4'), q('D5')],
+      [q('C#5'), q('B4'), h('A4')],
+      [q('A4'), q('B4'), q('A4'), q('C#5')],
+      [q('A4'), q('D5'), q('A4'), q('C#5')],
+      [q('B4'), q('D5'), q('C#5'), q('B4')],
+      [w('A4')],
+    ],
+  },
+  {
+    id: 'd-major',
+    name: '3 · D major, one octave',
+    clef: 'treble', key: 'D', meter: [4, 4], targetBpm: 84, position: ON_DA,
+    about: 'The same frame on both strings: thumb, 1, 2, 3 on the D string, then thumb, 1, 2, 3 on the A. One octave of D major without the hand moving at all. Listen for the octave between the two thumb notes.',
     measures: [
       [q('D4'), q('E4'), q('F#4'), q('G4')],
       [q('A4'), q('B4'), q('C#5'), q('D5')],
@@ -340,10 +172,26 @@ const PASSAGES = [
     ],
   },
   {
-    id: 'twinkle-high',
-    name: '15 · twinkle, an octave up',
-    clef: 'treble', key: 'D', meter: [4, 4], targetBpm: 100, position: AT_QUARTER,
-    about: 'The tune from passage 5, an octave higher and in treble clef. Same fingers, same crossings; only the staff has changed.',
+    id: 'mary',
+    name: '4 · mary had a little lamb',
+    clef: 'treble', key: 'D', meter: [4, 4], targetBpm: 96, position: ON_DA,
+    about: 'A tune on the D string with one visit to the thumb on A. Read it off the staff: D just under the first line, E on it, F♯ in the first space, the thumb\'s A in the second.',
+    measures: [
+      [q('F#4'), q('E4'), q('D4'), q('E4')],
+      [q('F#4'), q('F#4'), h('F#4')],
+      [q('E4'), q('E4'), h('E4')],
+      [q('F#4'), q('A4'), h('A4')],
+      [q('F#4'), q('E4'), q('D4'), q('E4')],
+      [q('F#4'), q('F#4'), q('F#4'), q('F#4')],
+      [q('E4'), q('E4'), q('F#4'), q('E4')],
+      [w('D4')],
+    ],
+  },
+  {
+    id: 'twinkle',
+    name: '5 · twinkle',
+    clef: 'treble', key: 'D', meter: [4, 4], targetBpm: 100, position: ON_DA,
+    about: 'Both strings now, and the first real string crossings under the thumb: D to A is thumb to thumb, G to F♯ is 3 to 2 on the D string. Keep the thumb down across both strings through the crossings.',
     measures: [
       [q('D4'), q('D4'), q('A4'), q('A4')],
       [q('B4'), q('B4'), h('A4')],
@@ -360,10 +208,10 @@ const PASSAGES = [
     ],
   },
   {
-    id: 'ode-high',
-    name: '16 · ode to joy, an octave up',
-    clef: 'treble', key: 'D', meter: [4, 4], targetBpm: 100, position: AT_QUARTER,
-    about: 'The first half of the tune from the high harmonics. F♯ sits on the bottom space of the treble staff and the thumb\'s A in the second: the whole phrase lives in the lower half of the staff.',
+    id: 'ode',
+    name: '6 · ode to joy',
+    clef: 'treble', key: 'D', meter: [4, 4], targetBpm: 100, position: ON_DA,
+    about: 'Beethoven\'s tune in D, all of it under the one hand. The middle section has eighths and the open A string, two ledger lines below the treble staff; the dotted quarter at the end of each phrase is where a steady thumb shows.',
     measures: [
       [q('F#4'), q('F#4'), q('G4'), q('A4')],
       [q('A4'), q('G4'), q('F#4'), q('E4')],
@@ -373,13 +221,53 @@ const PASSAGES = [
       [q('A4'), q('G4'), q('F#4'), q('E4')],
       [q('D4'), q('D4'), q('E4'), q('F#4')],
       [qd('E4'), e('D4'), h('D4')],
+      [q('E4'), q('E4'), q('F#4'), q('D4')],
+      [q('E4'), e('F#4'), e('G4'), q('F#4'), q('D4')],
+      [q('E4'), e('F#4'), e('G4'), q('F#4'), q('E4')],
+      [q('D4'), q('E4'), h('A3')],
+      [q('F#4'), q('F#4'), q('G4'), q('A4')],
+      [q('A4'), q('G4'), q('F#4'), q('E4')],
+      [q('D4'), q('D4'), q('E4'), q('F#4')],
+      [qd('E4'), e('D4'), h('D4')],
     ],
   },
   {
-    id: 'thirds-high',
-    name: '17 · broken thirds, an octave up',
-    clef: 'treble', key: 'D', meter: [4, 4], targetBpm: 76, position: AT_QUARTER,
-    about: 'The thirds from passage 10 at the high harmonics. Up here a third is a small distance for the hand and a large one for the ear: tune each one to the drone before moving on.',
+    id: 'frere',
+    name: '7 · frère jacques',
+    clef: 'treble', key: 'D', meter: [4, 4], targetBpm: 104, position: ON_DA,
+    about: 'Eighths across the two strings, and the open A at the end, below the staff. The round is a good one to loop: by the third pass the thumb has been down for a while.',
+    measures: [
+      [q('D4'), q('E4'), q('F#4'), q('D4')],
+      [q('D4'), q('E4'), q('F#4'), q('D4')],
+      [q('F#4'), q('G4'), h('A4')],
+      [q('F#4'), q('G4'), h('A4')],
+      [e('A4'), e('B4'), e('A4'), e('G4'), q('F#4'), q('D4')],
+      [e('A4'), e('B4'), e('A4'), e('G4'), q('F#4'), q('D4')],
+      [q('D4'), q('A3'), h('D4')],
+      [q('D4'), q('A3'), h('D4')],
+    ],
+  },
+  {
+    id: 'g-major',
+    name: '8 · the low second finger',
+    clef: 'treble', key: 'G', meter: [4, 4], targetBpm: 84, position: ON_DA,
+    about: 'G major from the same thumb position. On the A string the 2nd finger now sits a half step above the 1st (C natural, not C♯) while on the D string it stays a whole step up (F♯). One sharp in the signature instead of two: read the key before the notes.',
+    measures: [
+      [q('D4'), q('E4'), q('F#4'), q('G4')],
+      [q('A4'), q('B4'), q('C5'), q('D5')],
+      [q('D5'), q('C5'), q('B4'), q('A4')],
+      [q('G4'), q('F#4'), q('E4'), q('D4')],
+      [q('A4'), q('B4'), q('C5'), q('B4')],
+      [q('A4'), q('C5'), q('B4'), q('A4')],
+      [q('A4'), q('B4'), q('C5'), q('D5')],
+      [q('C5'), q('B4'), h('A4')],
+    ],
+  },
+  {
+    id: 'thirds',
+    name: '9 · D major in broken thirds',
+    clef: 'treble', key: 'D', meter: [4, 4], targetBpm: 76, position: ON_DA,
+    about: 'Thirds are where thumb-position intonation is won or lost: thumb to 2 is a major third on each string, and the crossing pairs (G to B, 3 on D to 1 on A) have to match them. Put the drone on and tune every third to it.',
     measures: [
       [q('D4'), q('F#4'), q('E4'), q('G4')],
       [q('F#4'), q('A4'), q('G4'), q('B4')],
@@ -392,19 +280,140 @@ const PASSAGES = [
     ],
   },
   {
-    id: 'two-octaves',
-    name: '18 · two octaves, D to D',
-    clef: 'tenor', key: 'D', meter: [4, 4], targetBpm: 80, position: AT_HALF,
-    about: 'Both thumb positions in one line, and both clefs. Up the D and A strings from the half-string harmonic, then the thumb slides up to D and on to the high harmonic A, each time with the 3rd finger holding the note it just played; and back down the same way. The clef changes where the music goes above the tenor staff.',
+    id: 'arpeggios',
+    name: '10 · arpeggios across the strings',
+    clef: 'treble', key: 'D', meter: [4, 4], targetBpm: 72, position: ON_DA,
+    about: 'D and G arpeggios in eighths, crossing between the strings on every other note, with the open A below. The bow does the crossing; the thumb stays flat across both strings so the crossing never asks the hand to move.',
     measures: [
-      [q('D3', 'T'), q('E3', '1'), q('F#3', '2'), q('G3', '3')],
-      [q('A3', 'T'), q('B3', '1'), q('C#4', '2'), q('D4', '3')],
-      clefTo('treble', [q('E4', '1'), q('F#4', '2'), q('G4', '3'), q('A4', 'T', true)]),
-      [q('B4', '1'), q('C#5', '2'), h('D5', '3')],
-      [q('D5', '3'), q('C#5', '2'), q('B4', '1'), q('A4', 'T', true)],
-      [q('G4', '3'), q('F#4', '2'), q('E4', '1'), q('D4', 'T')],
-      clefTo('tenor', [q('C#4', '2'), q('B3', '1'), q('A3', 'T'), q('G3', '3')]),
-      [q('F#3', '2'), q('E3', '1'), h('D3', 'T')],
+      [e('D4'), e('F#4'), e('A4'), e('D5'), e('A4'), e('F#4'), q('D4')],
+      [e('D4'), e('G4'), e('B4'), e('D5'), e('B4'), e('G4'), q('D4')],
+      [e('D4'), e('F#4'), e('A4'), e('D5'), e('A4'), e('F#4'), q('D4')],
+      [e('A3'), e('D4'), e('F#4'), e('A4'), e('F#4'), e('D4'), q('A3')],
+    ],
+  },
+  {
+    id: 'harmonics-gd',
+    name: '11 · the harmonics on G and D',
+    clef: 'tenor', key: 'G', meter: [4, 4], targetBpm: 72, position: ON_GD,
+    about: 'The same thumb, one pair of strings lower: across the G and D strings at their octave harmonics, G and D. Thicker strings, so the thumb has to press harder to stop them, and the clef changes to tenor, where the G sits on the middle line and the D on the top one.',
+    measures: [
+      [w('G3')], [w('D4')], [h('G3'), h('D4')], [h('D4'), h('G3')], [h('G3'), h('D4')], [w('G3')],
+    ],
+  },
+  {
+    id: 'g-major-gd',
+    name: '12 · G major, one octave',
+    clef: 'tenor', key: 'G', meter: [4, 4], targetBpm: 84, position: ON_GD,
+    about: 'The one-octave scale on the G and D strings: thumb, 1, 2, 3 on each. The frame is the one from the D and A strings, moved over. The top G is on a ledger line above the tenor staff, the first note the clef can\'t hold.',
+    measures: [
+      [q('G3'), q('A3'), q('B3'), q('C4')],
+      [q('D4'), q('E4'), q('F#4'), q('G4')],
+      [q('G4'), q('F#4'), q('E4'), q('D4')],
+      [q('C4'), q('B3'), q('A3'), q('G3')],
+      [q('G3'), q('B3'), q('D4'), q('G4')],
+      [q('G4'), q('D4'), q('B3'), q('G3')],
+      [e('G3'), e('A3'), e('B3'), e('C4'), e('D4'), e('E4'), e('F#4'), e('G4')],
+      [e('G4'), e('F#4'), e('E4'), e('D4'), e('C4'), e('B3'), e('A3'), e('G3')],
+    ],
+  },
+  {
+    id: 'ode-g',
+    name: '13 · ode to joy in G',
+    clef: 'tenor', key: 'G', meter: [4, 4], targetBpm: 100, position: ON_GD,
+    about: 'The tune from passage 6, a fifth lower on the G and D strings, in tenor clef. Same fingers, same crossings: the thumb\'s D is the top line, the G the middle one.',
+    measures: [
+      [q('B3'), q('B3'), q('C4'), q('D4')],
+      [q('D4'), q('C4'), q('B3'), q('A3')],
+      [q('G3'), q('G3'), q('A3'), q('B3')],
+      [qd('B3'), e('A3'), h('A3')],
+      [q('B3'), q('B3'), q('C4'), q('D4')],
+      [q('D4'), q('C4'), q('B3'), q('A3')],
+      [q('G3'), q('G3'), q('A3'), q('B3')],
+      [qd('A3'), e('G3'), h('G3')],
+    ],
+  },
+  {
+    id: 'twinkle-g',
+    name: '14 · twinkle in G',
+    clef: 'tenor', key: 'G', meter: [4, 4], targetBpm: 100, position: ON_GD,
+    about: 'Twinkle on the G and D strings. The whole tune sits inside the tenor staff, from the thumb\'s G on the middle line to the 1st finger\'s E just above the top.',
+    measures: [
+      [q('G3'), q('G3'), q('D4'), q('D4')],
+      [q('E4'), q('E4'), h('D4')],
+      [q('C4'), q('C4'), q('B3'), q('B3')],
+      [q('A3'), q('A3'), h('G3')],
+      [q('D4'), q('D4'), q('C4'), q('C4')],
+      [q('B3'), q('B3'), h('A3')],
+      [q('D4'), q('D4'), q('C4'), q('C4')],
+      [q('B3'), q('B3'), h('A3')],
+      [q('G3'), q('G3'), q('D4'), q('D4')],
+      [q('E4'), q('E4'), h('D4')],
+      [q('C4'), q('C4'), q('B3'), q('B3')],
+      [q('A3'), q('A3'), h('G3')],
+    ],
+  },
+  {
+    id: 'thirds-g',
+    name: '15 · G major in broken thirds',
+    clef: 'tenor', key: 'G', meter: [4, 4], targetBpm: 76, position: ON_GD,
+    about: 'The thirds again, on the G and D strings. Thumb to 2 is a major third on each string, and the crossing pairs — C to E, 3 on G to 1 on D — have to match them. Tune each one to the drone before moving on.',
+    measures: [
+      [q('G3'), q('B3'), q('A3'), q('C4')],
+      [q('B3'), q('D4'), q('C4'), q('E4')],
+      [q('D4'), q('F#4'), q('E4'), q('G4')],
+      [w('G4')],
+      [q('G4'), q('E4'), q('F#4'), q('D4')],
+      [q('E4'), q('C4'), q('D4'), q('B3')],
+      [q('C4'), q('A3'), q('B3'), q('G3')],
+      [w('G3')],
+    ],
+  },
+  {
+    id: 'c-major-cg',
+    name: '16 · C major on the C and G strings',
+    clef: 'tenor', key: 'C', meter: [4, 4], targetBpm: 80, position: ON_CG,
+    about: 'The frame on the two thick strings, thumb at the C and G harmonics. This is the thumb\'s real test: the C string takes weight to stop cleanly. In tenor clef the thumb\'s C hangs a ledger line below the staff and the octave C sits on the fourth line, where the clef points.',
+    measures: [
+      [q('C3'), q('D3'), q('E3'), q('F3')],
+      [q('G3'), q('A3'), q('B3'), q('C4')],
+      [q('C4'), q('B3'), q('A3'), q('G3')],
+      [q('F3'), q('E3'), q('D3'), q('C3')],
+      [q('C3'), q('E3'), q('G3'), q('C4')],
+      [q('C4'), q('G3'), q('E3'), q('C3')],
+      [e('C3'), e('D3'), e('E3'), e('F3'), e('G3'), e('A3'), e('B3'), e('C4')],
+      [e('C4'), e('B3'), e('A3'), e('G3'), e('F3'), e('E3'), e('D3'), e('C3')],
+    ],
+  },
+  {
+    id: 'c-major-two',
+    name: '17 · C major, two octaves, across all four strings',
+    clef: 'tenor', key: 'C', meter: [4, 4], targetBpm: 80, position: ON_CG,
+    about: 'The thumb lies across the harmonics of every string in turn — C and G, G and D, D and A — and the fingers keep the same shape on each: thumb, 1, 2, 3 up the C string, the G, the D, then thumb, 1, 2 on the A. Two octaves without a shift. The clef changes to treble where the A string begins, above the tenor staff, and back on the way down.',
+    measures: [
+      [q('C3', 'T', true), q('D3', '1'), q('E3', '2'), q('F3', '3')],
+      [q('G3', 'T', true), q('A3', '1'), q('B3', '2'), q('C4', '3')],
+      [q('D4', 'T', true), q('E4', '1'), q('F4', '2'), q('G4', '3')],
+      clefTo('treble', [q('A4', 'T', true), q('B4', '1'), h('C5', '2')]),
+      [q('C5', '2'), q('B4', '1'), q('A4', 'T', true), q('G4', '3')],
+      clefTo('tenor', [q('F4', '2'), q('E4', '1'), q('D4', 'T', true), q('C4', '3')]),
+      [q('B3', '2'), q('A3', '1'), q('G3', 'T', true), q('F3', '3')],
+      [q('E3', '2'), q('D3', '1'), h('C3', 'T', true)],
+    ],
+  },
+  {
+    id: 'two-octaves',
+    name: '18 · two octaves, D to D, up to the high harmonics',
+    clef: 'treble', key: 'D', meter: [4, 4], targetBpm: 80, position: ON_DA,
+    about: 'From the octave harmonics up to the next ones: the three-quarter-string harmonics, D and A an octave higher still, where the fingers sit very close together. Up the D and A strings from the thumb on D, then the thumb slides up the A string to D with the 3rd finger holding the note it just played, and on to the high harmonic A; and back down the same way.',
+    measures: [
+      [q('D4', 'T', true), q('E4', '1'), q('F#4', '2'), q('G4', '3')],
+      [q('A4', 'T', true), q('B4', '1'), q('C#5', '2'), q('D5', '3')],
+      [q('E5', '1'), q('F#5', '2'), q('G5', '3'), q('A5', 'T', true)],
+      [q('B5', '1'), q('C#6', '2'), h('D6', '3')],
+      [q('D6', '3'), q('C#6', '2'), q('B5', '1'), q('A5', 'T', true)],
+      [q('G5', '3'), q('F#5', '2'), q('E5', '1'), q('D5', 'T')],
+      [q('C#5', '2'), q('B4', '1'), q('A4', 'T', true), q('G4', '3')],
+      [q('F#4', '2'), q('E4', '1'), h('D4', 'T', true)],
     ],
   },
 ];
@@ -1102,9 +1111,14 @@ const drone = AudioKit.createDrone();
 let droneFifth = false;
 let droneVolume = 0.1;
 
+// The drone sits on the open string of the key's tonic where there is one
+// (C2, G2, D3, A3) — the note a cellist tunes to anyway — else low in the
+// second octave.
+const OPEN_STRINGS = { C: 2, G: 2, D: 3, A: 3 };
 function droneMidi() {
-  const root = passage().key.replace('#', '♯').replace('b', '♭');
-  return AudioKit.pitchToMidi(root + '2');
+  const key = passage().key;
+  const root = key.replace('#', '♯').replace('b', '♭');
+  return AudioKit.pitchToMidi(root + (OPEN_STRINGS[key] || 2));
 }
 
 function syncDrone() {
