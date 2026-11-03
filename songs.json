@@ -134,6 +134,23 @@
         { "start": "14:40",   "end": "18:05",   "label": "Berceuse" },
         { "start": "18:05",   "end": "21:20",   "label": "Finale" }
       ]
+    },
+    "long-may-you-run": {
+      "title": "The Stills-Young Band — Long May You Run",
+      "videoId": "dVM8_jAL86w",
+      "fineTune": true,
+      "drone": "D",
+      "footer": "The 2016 remaster (3:55). The section boundaries are <b>estimates</b> laid out from the song’s shape — intro, three verses, a chorus after each, a solo before the last verse — not set from the recording: play it through, hit <b>set</b> as each section begins, then trim with the ±0.1s buttons. The drone sits on D, the key of the record.",
+      "loops": [
+        { "start": "0:00", "end": "0:15", "label": "intro" },
+        { "start": "0:15", "end": "0:46", "label": "verse 1 — We’ve been through some things together" },
+        { "start": "0:46", "end": "1:16", "label": "chorus" },
+        { "start": "1:16", "end": "1:47", "label": "verse 2 — Well, it was back in Blind River" },
+        { "start": "1:47", "end": "2:17", "label": "chorus" },
+        { "start": "2:17", "end": "2:47", "label": "solo" },
+        { "start": "2:47", "end": "3:17", "label": "verse 3 — Maybe the Beach Boys have got you now" },
+        { "start": "3:17", "end": "3:55", "label": "chorus and outro" }
+      ]
     }
   }
 }
