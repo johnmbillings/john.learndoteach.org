@@ -49,3 +49,9 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          # Pages has sat in "updating_pages" past the action's 10-minute
+          # default and the deploy was aborted — three times in a row on
+          # 2026-11-04, with the upload succeeding each time. Give it half an
+          # hour before giving up.
+          timeout: 1800000
