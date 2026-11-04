@@ -140,15 +140,17 @@
       "videoId": "k4M53xndqiU",
       "fineTune": true,
       "drone": "E♭",
-      "footer": "The album version (<i>Fleetwood Mac</i>, 1975; 3:19). The section boundaries are <b>estimates</b> laid out from the song’s shape — the fingerpicked intro, two verses, the chorus, Lindsey Buckingham’s solo, a last verse, then the chorus and outro — not set from the recording: play it through, hit <b>set</b> as each section begins, then trim with the ±0.1s buttons. The guitar is capoed at the third fret in C shapes, so the song sounds in E♭; the drone sits there.",
+      "footer": "The album version (<i>Fleetwood Mac</i>, 1975; 3:19). The boundaries through the solo are set from the recording, and the solo is loopable as two halves or whole. <b>Verse 3’s end and the final chorus are still estimates</b>: hit <b>set</b> where the last chorus begins, then trim with the ±0.1s buttons. The guitar is capoed at the third fret in C shapes, so everything sounds in two flats; the drone sits on E♭, the verse’s centre.",
       "loops": [
-        { "start": "0:00", "end": "0:16", "label": "intro" },
-        { "start": "0:16", "end": "0:44", "label": "verse 1 — I took my love, I took it down" },
-        { "start": "0:44", "end": "1:13", "label": "verse 2 — Oh, mirror in the sky" },
-        { "start": "1:13", "end": "1:46", "label": "chorus — Well, I’ve been afraid of changing" },
-        { "start": "1:46", "end": "2:16", "label": "guitar solo" },
-        { "start": "2:16", "end": "2:45", "label": "verse 3 — Take my love, take it down" },
-        { "start": "2:45", "end": "3:19", "label": "chorus and outro — And if you see my reflection" }
+        { "start": "0:00", "end": "0:16",   "label": "intro" },
+        { "start": "0:16", "end": "0:44",   "label": "verse 1 — I took my love, I took it down" },
+        { "start": "0:44", "end": "1:13",   "label": "verse 2 — Oh, mirror in the sky" },
+        { "start": "1:13", "end": "1:36",   "label": "chorus — Well, I’ve been afraid of changing" },
+        { "start": "1:36", "end": "1:47.0", "label": "guitar solo — first half" },
+        { "start": "1:46", "end": "2:05",   "label": "guitar solo — second half" },
+        { "start": "1:36", "end": "2:05",   "label": "guitar solo — whole" },
+        { "start": "2:05", "end": "2:45",   "label": "verse 3 — Take my love, take it down" },
+        { "start": "2:45", "end": "3:19",   "label": "chorus and outro — And if you see my reflection" }
       ]
     }
   }
