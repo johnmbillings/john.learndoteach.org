@@ -135,21 +135,21 @@
         { "start": "18:05",   "end": "21:20",   "label": "Finale" }
       ]
     },
-    "long-may-you-run": {
-      "title": "The Stills-Young Band — Long May You Run",
-      "videoId": "dVM8_jAL86w",
+    "landslide": {
+      "title": "Fleetwood Mac — Landslide",
+      "videoId": "WM7-PYtXtJM",
       "fineTune": true,
-      "drone": "D",
-      "footer": "The 2016 remaster (3:55). The section boundaries are <b>estimates</b> laid out from the song’s shape — intro, three verses, a chorus after each, a solo before the last verse — not set from the recording: play it through, hit <b>set</b> as each section begins, then trim with the ±0.1s buttons. The drone sits on D, the key of the record.",
+      "drone": "E♭",
+      "footer": "The Dance, Warner Brothers Studios, Burbank, 23 May 1997 (4:28). The section boundaries are <b>estimates</b> laid out from the song’s shape — the fingerpicked intro, two verses, the chorus, Lindsey Buckingham’s solo, a last verse, the chorus again and the outro — not set from the recording: play it through, hit <b>set</b> as each section begins, then trim with the ±0.1s buttons. The guitar is capoed at the third fret in C shapes, so the song sounds in E♭; the drone sits there.",
       "loops": [
-        { "start": "0:00", "end": "0:15", "label": "intro" },
-        { "start": "0:15", "end": "0:46", "label": "verse 1 — We’ve been through some things together" },
-        { "start": "0:46", "end": "1:16", "label": "chorus" },
-        { "start": "1:16", "end": "1:47", "label": "verse 2 — Well, it was back in Blind River" },
-        { "start": "1:47", "end": "2:17", "label": "chorus" },
-        { "start": "2:17", "end": "2:47", "label": "solo" },
-        { "start": "2:47", "end": "3:17", "label": "verse 3 — Maybe the Beach Boys have got you now" },
-        { "start": "3:17", "end": "3:55", "label": "chorus and outro" }
+        { "start": "0:00", "end": "0:35", "label": "intro" },
+        { "start": "0:35", "end": "1:07", "label": "verse 1 — I took my love, I took it down" },
+        { "start": "1:07", "end": "1:38", "label": "verse 2 — Oh, mirror in the sky" },
+        { "start": "1:38", "end": "2:12", "label": "chorus — Well, I’ve been afraid of changing" },
+        { "start": "2:12", "end": "2:48", "label": "guitar solo" },
+        { "start": "2:48", "end": "3:20", "label": "verse 3 — Take my love, take it down" },
+        { "start": "3:20", "end": "3:52", "label": "chorus" },
+        { "start": "3:52", "end": "4:28", "label": "outro — And if you see my reflection" }
       ]
     }
   }
