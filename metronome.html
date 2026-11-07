@@ -246,6 +246,148 @@
     .switch input:checked + .track { background: var(--accent-dim); border-color: var(--accent); }
     .switch input:checked + .track .thumb { left: calc(100% - 1.05em); background: var(--accent); }
 
+    /* ---- drone: root + 5th under the click ---- */
+    .drone {
+      width: min(34rem, 100%);
+      margin-top: 0.4rem;
+      padding: 1rem 1.1rem 0.9rem;
+      border: 1px solid var(--line);
+      border-radius: 1rem;
+      background: rgba(255, 255, 255, 0.025);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .drone-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.8rem 1.4rem;
+      font-size: 0.98rem;
+      color: rgba(255, 255, 255, 0.6);
+      width: 100%;
+    }
+    .drone-btn {
+      background: none;
+      border: 1px solid #555;
+      color: #ddd;
+      font-family: inherit;
+      font-size: 1.05rem;
+      letter-spacing: 0.05em;
+      padding: 0.5em 1.2em;
+      border-radius: 2rem;
+      cursor: pointer;
+      text-transform: lowercase;
+      min-width: 7.5em;
+      transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
+    }
+    .drone-btn:hover { border-color: var(--accent); color: #fff; }
+    .drone-btn.on {
+      border-color: #e0a06a;
+      color: #f6c79b;
+      box-shadow: 0 0 18px rgba(224, 160, 106, 0.35);
+    }
+    .drone-vol { display: inline-flex; align-items: center; gap: 0.55em; }
+    .drone-vol input[type=range] { width: 6.5rem; flex: none; }
+
+    /* the tonal-center wheel: a horizontal roll bar that snaps to one note */
+    .wheel-wrap {
+      position: relative;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .wheel-arrow {
+      background: none;
+      border: none;
+      color: #666;
+      font-family: inherit;
+      font-size: 1.5rem;
+      line-height: 1;
+      width: 1.8rem;
+      height: 2.4rem;
+      cursor: pointer;
+      flex: none;
+      padding: 0;
+    }
+    .wheel-arrow:hover { color: var(--accent); }
+    .wheel {
+      --item: 3.6rem;
+      position: relative;
+      flex: 1;
+      min-width: 0;
+      height: 3.6rem;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-snap-type: x mandatory;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: pan-x;
+      outline: none;
+      /* fade the ends so it reads as a cylinder seen edge-on */
+      -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14%, #000 86%, transparent 100%);
+      mask-image: linear-gradient(to right, transparent 0, #000 14%, #000 86%, transparent 100%);
+    }
+    .wheel::-webkit-scrollbar { display: none; }
+    .wheel.dragging { scroll-snap-type: none; cursor: grabbing; scroll-behavior: auto; }
+    .wheel:focus-visible .wheel-note.sel { text-shadow: 0 0 18px var(--accent), 0 0 2px #fff; }
+    .wheel-track {
+      display: flex;
+      height: 100%;
+      align-items: center;
+      padding: 0 calc(50% - var(--item) / 2);
+      width: max-content;
+    }
+    .wheel-note {
+      flex: none;
+      width: var(--item);
+      height: 100%;
+      display: grid;
+      place-items: center;
+      scroll-snap-align: center;
+      font-size: 1.45rem;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.35);
+      transition: color 0.15s, transform 0.15s, text-shadow 0.15s;
+      transform: scale(0.82);
+      cursor: pointer;
+    }
+    .wheel-note.sel {
+      color: #fff;
+      transform: scale(1.1);
+      font-weight: 500;
+      text-shadow: 0 0 14px rgba(156, 216, 255, 0.6);
+    }
+    .wheel-note.near { color: rgba(255, 255, 255, 0.6); transform: scale(0.92); }
+    /* centre marks above and below the selected note */
+    .wheel-wrap::before, .wheel-wrap::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      width: 0.42rem;
+      height: 0.42rem;
+      transform: translateX(-50%) rotate(45deg);
+      background: var(--accent);
+      opacity: 0.7;
+      pointer-events: none;
+    }
+    .wheel-wrap::before { top: 0.05rem; }
+    .wheel-wrap::after { bottom: 0.05rem; }
+    .drone-now {
+      font-style: italic;
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.5);
+      min-height: 1.2em;
+      letter-spacing: 0.03em;
+    }
+    .drone.on .drone-now { color: #f6c79b; }
+
     @media (max-width: 420px) {
       .stage { width: 250px; height: 300px; }
       .bpm { font-size: 4rem; }
@@ -256,7 +398,7 @@
   <a class="back" href="index.html">← back</a>
 
   <h1>metronome</h1>
-  <p class="hint">a swinging arm, ticking true &mdash; drag the tempo, tap it out, or nudge with &plusmn;<br>space toggles start/stop &middot; &uarr;&darr; change tempo</p>
+  <p class="hint">a swinging arm, ticking true &mdash; drag the tempo, tap it out, or nudge with &plusmn;<br>space toggles start/stop &middot; &uarr;&darr; change tempo &middot; d toggles the drone</p>
 
   <div class="stage">
     <svg class="metronome-svg" viewBox="0 0 300 360" aria-hidden="true">
@@ -377,6 +519,39 @@
     </label>
   </div>
 
+  <section class="drone" id="drone" aria-label="drone">
+    <div class="wheel-wrap">
+      <button class="wheel-arrow" id="wheel-prev" type="button" aria-label="lower tonal center">&lsaquo;</button>
+      <div class="wheel" id="wheel" tabindex="0" role="slider" aria-label="tonal center"
+           aria-valuemin="0" aria-valuemax="11" aria-valuenow="9" aria-valuetext="A">
+        <div class="wheel-track" id="wheel-track"></div>
+      </div>
+      <button class="wheel-arrow" id="wheel-next" type="button" aria-label="higher tonal center">&rsaquo;</button>
+    </div>
+    <div class="drone-now" id="drone-now"></div>
+    <div class="drone-row">
+      <button class="drone-btn" id="drone-btn" type="button">drone</button>
+      <label class="switch">
+        <input id="drone-fifth" type="checkbox" checked>
+        <span class="track"><span class="thumb"></span></span>
+        add 5th
+      </label>
+      <label class="ctl">
+        octave
+        <select id="drone-octave">
+          <option value="2">low</option>
+          <option value="3" selected>mid</option>
+          <option value="4">high</option>
+        </select>
+      </label>
+      <label class="drone-vol">
+        vol
+        <input id="drone-volume" type="range" min="0" max="0.5" step="0.01" value="0.14" aria-label="drone volume">
+      </label>
+    </div>
+  </section>
+
+  <script src="audio.js"></script>
   <script>
   (() => {
     'use strict';
@@ -661,8 +836,10 @@
 
     // ---------- keyboard ----------
     document.addEventListener('keydown', e => {
-      if (e.target.tagName === 'SELECT') return;
+      if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
+      if (e.target.id === 'wheel' && e.code !== 'Space' && e.code !== 'KeyD') return;
       if (e.code === 'Space') { e.preventDefault(); toggle(); }
+      else if (e.code === 'KeyD' && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); toggleDrone(); }
       else if (e.code === 'ArrowUp' || e.code === 'ArrowRight') { e.preventDefault(); setBpm(bpm + 1); }
       else if (e.code === 'ArrowDown' || e.code === 'ArrowLeft') { e.preventDefault(); setBpm(bpm - 1); }
     });
@@ -680,9 +857,159 @@
       }
     })();
 
+    // ---------- drone: root + 5th, with a roll bar for the tonal centre ----------
+    // The sustained voice is the shared engine in audio.js (same one the jazz
+    // page uses): a sawtooth root through the cello filters, plus a just fifth.
+    const NOTES = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
+    const FIFTH_OF = ['G', 'A♭', 'A', 'B♭', 'B', 'C', 'D♭', 'D', 'E♭', 'E', 'F', 'F♯'];
+    const drone = AudioKit.createDrone();
+    let rootPc = 9;        // pitch class 0..11 (A)
+    let droneOctave = 3;   // A3 = 220 Hz under the mid setting
+
+    const droneEl = document.getElementById('drone');
+    const droneBtn = document.getElementById('drone-btn');
+    const droneNow = document.getElementById('drone-now');
+    const fifthToggle = document.getElementById('drone-fifth');
+    const octaveSel = document.getElementById('drone-octave');
+    const droneVol = document.getElementById('drone-volume');
+    const wheel = document.getElementById('wheel');
+    const track = document.getElementById('wheel-track');
+    let noteEls = [];
+
+    function rootMidi() { return rootPc + (droneOctave + 1) * 12; }
+
+    function applyRoot() {
+      drone.setRoot(rootMidi());
+      wheel.setAttribute('aria-valuenow', rootPc);
+      wheel.setAttribute('aria-valuetext', NOTES[rootPc]);
+      noteEls.forEach((el, i) => {
+        el.classList.toggle('sel', i === rootPc);
+        el.classList.toggle('near', Math.abs(i - rootPc) === 1);
+      });
+      const sub = ['₀','₁','₂','₃','₄','₅','₆','₇','₈','₉'][droneOctave] || droneOctave;
+      droneNow.textContent = NOTES[rootPc] + sub + (fifthToggle.checked ? ' + ' + FIFTH_OF[rootPc] : '')
+        + (drone.playing ? ' sounding' : '');
+    }
+
+    function itemWidth() { return noteEls[0] ? noteEls[0].offsetWidth : 1; }
+    function nearestIndex() {
+      return Math.max(0, Math.min(NOTES.length - 1, Math.round(wheel.scrollLeft / itemWidth())));
+    }
+    // Scroll the roll bar so note i sits under the centre marks.
+    function scrollToIndex(i, smooth) {
+      i = Math.max(0, Math.min(NOTES.length - 1, i));
+      wheel.scrollTo({ left: i * itemWidth(), behavior: smooth ? 'smooth' : 'auto' });
+    }
+    function selectIndex(i, smooth) {
+      i = Math.max(0, Math.min(NOTES.length - 1, i));
+      if (i !== rootPc) { rootPc = i; applyRoot(); }
+      scrollToIndex(i, smooth);
+    }
+
+    function buildWheel() {
+      track.innerHTML = '';
+      noteEls = NOTES.map((n, i) => {
+        const el = document.createElement('span');
+        el.className = 'wheel-note';
+        el.textContent = n;
+        el.addEventListener('click', () => { if (!dragMoved) selectIndex(i, true); });
+        track.appendChild(el);
+        return el;
+      });
+    }
+
+    // Live retune while the bar rolls: whichever note is nearest the centre is
+    // the root, so dragging through the keys glides the drone with it.
+    wheel.addEventListener('scroll', () => {
+      const i = nearestIndex();
+      if (i !== rootPc) { rootPc = i; applyRoot(); }
+    }, { passive: true });
+
+    // Mouse wheel / trackpad: one notch moves one note.
+    let wheelAccum = 0, wheelLock = 0;
+    wheel.addEventListener('wheel', e => {
+      e.preventDefault();
+      const now = performance.now();
+      if (now < wheelLock) return;
+      wheelAccum += Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+      if (Math.abs(wheelAccum) < 12) return;
+      selectIndex(rootPc + (wheelAccum > 0 ? 1 : -1), true);
+      wheelAccum = 0;
+      wheelLock = now + 140;
+    }, { passive: false });
+
+    // Mouse drag-to-roll (touch already scrolls natively). Snap is switched off
+    // while dragging and the bar settles on the nearest note at release.
+    let dragging = false, dragMoved = false, dragStartX = 0, dragStartScroll = 0;
+    wheel.addEventListener('pointerdown', e => {
+      if (e.pointerType !== 'mouse') return;
+      dragging = true; dragMoved = false;
+      dragStartX = e.clientX; dragStartScroll = wheel.scrollLeft;
+      wheel.classList.add('dragging');
+      wheel.setPointerCapture(e.pointerId);
+    });
+    wheel.addEventListener('pointermove', e => {
+      if (!dragging) return;
+      const dx = e.clientX - dragStartX;
+      if (Math.abs(dx) > 3) dragMoved = true;
+      wheel.scrollLeft = dragStartScroll - dx;
+    });
+    function endDrag(e) {
+      if (!dragging) return;
+      dragging = false;
+      wheel.classList.remove('dragging');
+      try { wheel.releasePointerCapture(e.pointerId); } catch (err) {}
+      if (dragMoved) selectIndex(nearestIndex(), true);
+      setTimeout(() => { dragMoved = false; }, 0);
+    }
+    wheel.addEventListener('pointerup', endDrag);
+    wheel.addEventListener('pointercancel', endDrag);
+
+    wheel.addEventListener('keydown', e => {
+      if (e.code === 'ArrowRight' || e.code === 'ArrowUp') { e.preventDefault(); selectIndex(rootPc + 1, true); }
+      else if (e.code === 'ArrowLeft' || e.code === 'ArrowDown') { e.preventDefault(); selectIndex(rootPc - 1, true); }
+      else if (e.code === 'Home') { e.preventDefault(); selectIndex(0, true); }
+      else if (e.code === 'End') { e.preventDefault(); selectIndex(NOTES.length - 1, true); }
+    });
+    document.getElementById('wheel-prev').addEventListener('click', () => selectIndex(rootPc - 1, true));
+    document.getElementById('wheel-next').addEventListener('click', () => selectIndex(rootPc + 1, true));
+
+    function toggleDrone() {
+      if (drone.playing) {
+        drone.stop();
+        droneBtn.textContent = 'drone';
+        droneBtn.classList.remove('on');
+        droneEl.classList.remove('on');
+      } else {
+        drone.setRoot(rootMidi());
+        drone.start();
+        droneBtn.textContent = 'stop drone';
+        droneBtn.classList.add('on');
+        droneEl.classList.add('on');
+      }
+      applyRoot();
+    }
+    droneBtn.addEventListener('click', toggleDrone);
+    fifthToggle.addEventListener('change', () => { drone.setFifth(fifthToggle.checked); applyRoot(); });
+    octaveSel.addEventListener('change', () => { droneOctave = parseInt(octaveSel.value, 10); applyRoot(); });
+    droneVol.addEventListener('input', () => drone.setVolume(parseFloat(droneVol.value)));
+
+    function initDrone() {
+      buildWheel();
+      drone.setFifth(fifthToggle.checked);
+      drone.setVolume(parseFloat(droneVol.value));
+      droneOctave = parseInt(octaveSel.value, 10);
+      applyRoot();
+      scrollToIndex(rootPc, false);
+      // Re-centre if the layout changes width (rotation, font load).
+      window.addEventListener('resize', () => scrollToIndex(rootPc, false));
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => scrollToIndex(rootPc, false));
+    }
+
     // ---------- init ----------
     buildDots();
     setBpm(96);
+    initDrone();
   })();
   </script>
 </body>
