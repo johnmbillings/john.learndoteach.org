@@ -17,6 +17,12 @@
 //
 // `n` is the bar number the page shows. checkRhythms() refuses to let a bar
 // that doesn't add up to its meter pass silently — it says so on the page.
+//
+// A bar normally counts in the rhythm's `beatUnit`, but one bar can be felt
+// differently from its neighbours: give it its own `beatUnit`, and the
+// counter, the metronome and the beaming follow it for that bar alone. A 4/4
+// bar in three is `beatUnit: '2t'` — three half-note triplets, 32 ticks each,
+// filling the 96 ticks of the bar.
 
 const TICKS_PER_QUARTER = 24;
 const BASE_TICKS = { '1': 96, '2': 48, '4': 24, '8': 12, '16': 6, '32': 3 };
@@ -66,6 +72,11 @@ const RHYTHMS = [
         rest('4'),
         note('8'), rest('8'),
       ] },
+      // 2 — the same four quarters felt in three: a half-note triplet, one
+      // note on each of its three even beats.
+      { n: 2, beatUnit: '2t', events: [
+        note('2t'), note('2t'), note('2t'),
+      ] },
     ],
   },
 ];
@@ -93,6 +104,14 @@ const selected = () => measures().slice(fromIdx, toIdx + 1);
 function beatTicks(r) { return parseDur(r.beatUnit || '4').ticks; }
 function measureTicks(r) { return r.beatsPerMeasure * beatTicks(r); }
 
+// How a given bar is counted: its own beatUnit if it has one, else the
+// rhythm's. The bar is always the meter's length; only its division changes.
+function barBeat(r, m) {
+  const unit = (m && m.beatUnit) || r.beatUnit || '4';
+  const ticks = parseDur(unit).ticks;
+  return { unit, ticks, count: Math.max(1, Math.round(measureTicks(r) / ticks)) };
+}
+
 // A bar that doesn't add up to its meter would play, and engrave, as something
 // nobody wrote. Report it instead.
 function checkRhythms() {
@@ -103,6 +122,9 @@ function checkRhythms() {
       const got = m.events.reduce((sum, e) => sum + e.ticks, 0);
       if (got !== want) {
         out.push(`${r.name} m.${m.n}: ${got}/${want} ticks — the bar doesn't add up`);
+      }
+      if (m.beatUnit && want % parseDur(m.beatUnit).ticks !== 0) {
+        out.push(`${r.name} m.${m.n}: a beat of "${m.beatUnit}" doesn't divide the bar evenly`);
       }
     });
   });
@@ -206,8 +228,7 @@ function engrave() {
   if (!list.length) { host.innerHTML = ''; return; }
 
   const barTicks = measureTicks(r);
-  const beat = beatTicks(r);
-  const mWant = r.beatsPerMeasure * BEAT_W;
+  const mWant = (barTicks / TICKS_PER_QUARTER) * BEAT_W;
   const px = host.clientWidth || 600;
   // How many bars fit on a line before the notes get too small to read.
   const perSystem = Math.max(1, Math.min(list.length,
@@ -238,6 +259,7 @@ function engrave() {
 
     bars.forEach((m, bi) => {
       const mx = x0 + bi * mW;
+      const beat = barBeat(r, m).ticks;
       const perTick = (mW - BAR_PAD - BAR_TAIL) / barTicks;
       const xOf = (at) => mx + BAR_PAD + at * perTick;
       const mine = [];
@@ -352,20 +374,24 @@ function rhythmLabel() {
 
 // --- the count and the highlight --------------------------------------------
 
-function buildCounter() {
+// One pip per beat of the bar being counted — a bar in three shows three.
+function buildCounter(count) {
   const pips = document.getElementById('count-beats');
   if (!pips) return;
+  const n = count != null ? count : barBeat(rhythm(), selected()[0]).count;
+  if (pips.children.length === n) return;
   pips.innerHTML = '';
-  for (let i = 0; i < rhythm().beatsPerMeasure; i++) {
+  for (let i = 0; i < n; i++) {
     const s = document.createElement('span');
     s.className = 'pip';
     pips.appendChild(s);
   }
 }
 
-function showCount(label, beat) {
+function showCount(label, beat, count) {
   const bar = document.getElementById('count-bar');
   if (bar) bar.textContent = label;
+  if (count != null) buildCounter(count);
   document.querySelectorAll('#count-beats .pip').forEach((p, i) => {
     p.classList.toggle('on', i === beat);
   });
@@ -397,6 +423,7 @@ function stopPlayback() {
   passTimers = [];
   clearHighlight();
   clearCount();
+  buildCounter();   // back to the first bar's beat, ready for the next count-in
   const counter = document.getElementById('counter');
   if (counter) counter.classList.remove('running');
   const btn = document.getElementById('play');
@@ -443,24 +470,16 @@ function schedulePass(when, lead) {
   if (!events.length) { finishPlayback(); return; }
 
   const barTicks = measureTicks(r);
-  const beatT = beatTicks(r);
   const tick = (60 / tempoBpm) / TICKS_PER_QUARTER;   // one tick, in seconds
-  const beat = beatT * tick;
-  const leadBeats = lead && countIn ? r.beatsPerMeasure : 0;
-  const start = when != null ? when : AudioKit.currentTime() + 0.08 + leadBeats * beat;
   const bars = selected();
+  // The count-in is in the first bar's beat, so a bar in three is counted in.
+  const first = barBeat(r, bars[0]);
+  const leadBeat = first.ticks * tick;
+  const leadBeats = lead && countIn ? first.count : 0;
+  const start = when != null ? when : AudioKit.currentTime() + 0.08 + leadBeats * leadBeat;
   const totalTicks = bars.length * barTicks;
 
   events.forEach(e => { if (e.sound) AudioKit.hit(start + e.at * tick); });
-
-  if (metronomeOn) {
-    for (let b = 0; b < bars.length * r.beatsPerMeasure; b++) {
-      AudioKit.click(start + b * beat, b % r.beatsPerMeasure === 0);
-    }
-  }
-  for (let b = 0; b < leadBeats; b++) {
-    AudioKit.click(start - (leadBeats - b) * beat, b === 0);
-  }
 
   // The visuals run off the same clock, one timer per thing to light up.
   const now = AudioKit.currentTime();
@@ -477,15 +496,20 @@ function schedulePass(when, lead) {
   // between counting the bar and guessing at it.
   events.forEach(e => soon(start + e.at * tick, () => highlight(e.index)));
 
-  let beatIndex = 0;
-  bars.forEach(m => {
-    for (let b = 0; b < r.beatsPerMeasure; b++) {
-      const at = start + (beatIndex++) * beat;
-      soon(at, () => showCount(m.n, b));
+  // Each bar is clicked and counted in its own beat: four quarters in one
+  // bar, three half-note triplets in the next, the downbeat accented either way.
+  bars.forEach((m, mi) => {
+    const bb = barBeat(r, m);
+    for (let b = 0; b < bb.count; b++) {
+      const at = start + (mi * barTicks + b * bb.ticks) * tick;
+      if (metronomeOn) AudioKit.click(at, b === 0);
+      soon(at, () => showCount(m.n, b, bb.count));
     }
   });
   for (let b = 0; b < leadBeats; b++) {
-    soon(start - (leadBeats - b) * beat, () => showCount('in', b));
+    const at = start - (leadBeats - b) * leadBeat;
+    AudioKit.click(at, b === 0);
+    soon(at, () => showCount('in', b, leadBeats));
   }
 
   const nextStart = start + totalTicks * tick;
@@ -546,6 +570,7 @@ function selectRange(from, to) {
   fromIdx = Math.max(0, Math.min(last, from));
   toIdx = Math.max(fromIdx, Math.min(last, to));
   buildRangePickers();
+  if (!playing) buildCounter();
   engrave();
   savePrefs();
   restartIfLooping();
