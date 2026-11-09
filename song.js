@@ -134,6 +134,24 @@ function init(slug) {
     return 0;
   }
 
+  // Playback rate and state, for the synced metronome (beat.js): it follows
+  // the speed slider through the rate, and falls silent while paused.
+  function currentRate() {
+    try {
+      if (isVideoMode) return playerReady && player && player.getPlaybackRate ? player.getPlaybackRate() : 1;
+      if (isAudioMode) return audioElement.playbackRate || 1;
+    } catch (e) {}
+    return 1;
+  }
+
+  function isPlaying() {
+    try {
+      if (isVideoMode) return !!(playerReady && player && player.getPlayerState && player.getPlayerState() === YT.PlayerState.PLAYING);
+      if (isAudioMode) return !audioElement.paused && !audioElement.ended;
+    } catch (e) {}
+    return false;
+  }
+
   function updateTimeDisplay() {
     timeDisplay.textContent = formatTimeFine(currentTime());
   }
@@ -392,6 +410,22 @@ function init(slug) {
       // Show the first loop's score by default
       const firstScore = loops.find(l => l.scoreSrc);
       if (firstScore) showScore(firstScore.scoreSrc);
+
+      // Synced metronome, when the song carries a beat grid. Guarded so a
+      // stale cached beat.js (or none) costs the panel, not the page.
+      if (song.beat && window.Beat && typeof Beat.setup === 'function') {
+        try {
+          Beat.setup({
+            root: document.getElementById('beat-panel'),
+            slug, song,
+            getTime: currentTime,
+            getRate: currentRate,
+            isPlaying,
+          });
+        } catch (e) {
+          console.error('beat panel failed to start:', e);
+        }
+      }
 
       // Keep the readout live. Polling covers both engines: the YouTube API
       // has no time event at all, and audio "timeupdate" only fires ~4x/sec.

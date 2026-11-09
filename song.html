@@ -60,6 +60,95 @@
       height: auto;
       display: block;
     }
+
+    /* ---- synced metronome (shown when the song has a "beat" grid) ---- */
+    #beat-panel {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.55rem;
+      width: min(560px, 90vw);
+      padding: 1rem 0.75rem 1.1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.55);
+      letter-spacing: 0.04em;
+    }
+    #beat-panel.active { display: flex; }
+    #beat-panel .beat-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem 1rem;
+      width: 100%;
+    }
+    #beat-panel label {
+      font-size: inherit;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35em;
+      white-space: nowrap;
+    }
+    #beat-panel input[type="text"] {
+      width: 5.2em;
+      text-align: center;
+      font-size: 0.95rem;
+      padding: 0.2em 0.3em;
+    }
+    #beat-panel select {
+      background: #000;
+      color: #ddd;
+      border: 1px solid #666;
+      font-family: inherit;
+      font-size: 0.9rem;
+      padding: 0.15em 0.3em;
+    }
+    #beat-panel button {
+      font-size: 0.9rem;
+      padding: 0.25em 0.7em;
+    }
+    #beat-panel .set-btn,
+    #beat-panel .nudge-btn {
+      padding: 0.1em 0.45em;
+      margin: 0;
+    }
+    #beat-panel input[type="range"] { width: 6em; }
+    .beat-tag {
+      font-style: italic;
+      letter-spacing: 0.12em;
+      color: rgba(255, 255, 255, 0.4);
+    }
+    .beat-toggle { min-width: 4.5em; }
+    .beat-toggle.on { color: #f0b48a; border-color: #c8743c; }
+    .beat-dots {
+      display: inline-flex;
+      gap: 0.45rem;
+      align-items: center;
+      min-height: 1rem;
+    }
+    .beat-dot {
+      width: 0.6rem;
+      height: 0.6rem;
+      border-radius: 50%;
+      border: 1px solid #4a6a80;
+      transition: transform 0.06s ease, background 0.06s ease;
+    }
+    .beat-dot.accent { border-color: #9cd8ff; }
+    .beat-dot.on { background: #9cd8ff; box-shadow: 0 0 10px #9cd8ff; transform: scale(1.3); }
+    .beat-dot.accent.on { background: #fff; box-shadow: 0 0 14px #fff; }
+    .beat-readout {
+      min-width: 6em;
+      font-variant-numeric: tabular-nums;
+      color: #d8d8ff;
+    }
+    .beat-readout.muted { color: rgba(255, 255, 255, 0.3); }
+    .beat-anchors, .beat-hint {
+      font-style: italic;
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.35);
+    }
   </style>
 </head>
 <body>
@@ -98,6 +187,55 @@
     <div id="scale-tools" style="display: none; gap: 0.5rem; flex-wrap: wrap; justify-content: center;"></div>
   </div>
 
+  <div id="beat-panel">
+    <div class="beat-row">
+      <span class="beat-tag">metronome</span>
+      <button type="button" class="beat-toggle" title="click along with the recording">click</button>
+      <span class="beat-dots"></span>
+      <span class="beat-readout"></span>
+    </div>
+    <div class="beat-row">
+      <label>bpm
+        <input class="beat-bpm" type="text" inputmode="decimal" aria-label="tempo of the recording, beats per minute">
+        <button type="button" class="nudge-btn beat-bpm-down" title="−0.1 bpm" aria-label="slow the grid by 0.1 bpm">−</button>
+        <button type="button" class="nudge-btn beat-bpm-up" title="+0.1 bpm" aria-label="speed the grid by 0.1 bpm">+</button>
+      </label>
+      <button type="button" class="beat-tap" title="tap along with the music, four or more times">tap</button>
+    </div>
+    <div class="beat-row">
+      <label>beat 1 at
+        <input class="beat-offset" type="text" inputmode="decimal" aria-label="time of a downbeat">
+        <button type="button" class="set-btn beat-offset-set" title="set to the current playback position">set</button>
+        <button type="button" class="nudge-btn beat-offset-down" title="−0.02s" aria-label="move the downbeat 0.02 seconds earlier">−</button>
+        <button type="button" class="nudge-btn beat-offset-up" title="+0.02s" aria-label="move the downbeat 0.02 seconds later">+</button>
+      </label>
+      <button type="button" class="beat-one" title="the accent is on the wrong beat: move it one beat later">1 ▸</button>
+    </div>
+    <div class="beat-row">
+      <label>from
+        <input class="beat-from" type="text" inputmode="decimal" aria-label="start clicking at">
+        <button type="button" class="set-btn beat-from-set" title="set to the current playback position">set</button>
+      </label>
+      <label>to
+        <input class="beat-to" type="text" inputmode="decimal" aria-label="stop clicking at">
+        <button type="button" class="set-btn beat-to-set" title="set to the current playback position">set</button>
+      </label>
+    </div>
+    <div class="beat-row">
+      <label>sound
+        <select class="beat-sound">
+          <option value="click">click</option>
+          <option value="wood">wood</option>
+          <option value="beep">beep</option>
+        </select>
+      </label>
+      <label>vol <input class="beat-volume" type="range" min="0" max="1.5" step="0.05" value="0.8"></label>
+      <button type="button" class="beat-copy" title="copy the tuned grid as JSON for songs.json">copy</button>
+      <button type="button" class="beat-reset" title="back to the grid in songs.json">reset</button>
+      <span class="beat-anchors"></span>
+    </div>
+  </div>
+
   <div id="footer-area"></div>
 
   <div id="drone-panel">
@@ -116,6 +254,7 @@
 
   <script src="https://www.youtube.com/iframe_api"></script>
   <script src="audio.js?v=6"></script>
-  <script src="song.js"></script>
+  <script src="beat.js?v=1"></script>
+  <script src="song.js?v=2"></script>
 </body>
 </html>
