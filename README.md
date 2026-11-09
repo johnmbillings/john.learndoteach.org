@@ -53,6 +53,7 @@ It appears automatically on the home page and at `song.html?s=my-song`.
 | `fineTune` | `true` adds ±0.1s nudge buttons to loop times. |
 | `scales` | Object `{ root, items }` that shows scale-playback buttons. `root` is a note name; each item is `{ mode, label? }` where `mode` is `ionian`/`major`/`dorian`/`phrygian`/`lydian`/`mixolydian`/`aeolian`/`minor`/`natural minor`/`locrian`. `label` overrides the button text. Example: `{ "root": "A♭", "items": [{ "mode": "aeolian", "label": "A♭ Aeolian (7♭)" }, { "mode": "dorian" }] }`. |
 | `drone` | A **note name** to enable a sustained drone, e.g. `"A♭"`, `"Eb3"`, `"G2"`. Octave is optional and defaults to 3. Omit the field (or set `null`) to leave the drone off. |
+| `beat` | A beat grid, `{ bpm, offset, beatsPerBar?, from?, to?, anchors? }`, that turns on the **synced metronome** (below). `offset` is the time of any downbeat; `from`/`to` trim where it clicks; `anchors` are downbeat times for a recording whose tempo wanders. `tools/detect_beats.py` finds all of them. |
 | `speedMin` | Minimum value for the speed slider. |
 | `footer` | HTML note shown below the controls. |
 | `lyrics` | Preformatted lyrics text shown at the bottom. |
@@ -119,6 +120,81 @@ control, shown as a footnote at the bottom of the page. Its pitch comes
 entirely from the song's `drone` field: `song.js` parses the note name to a
 MIDI number (`pitchToMidi`), so the same field both enables the drone and sets
 its note and label. The fifth is derived as root × 1.5.
+
+### The synced metronome
+
+A song with a `beat` field gets a metronome that clicks **in time with the
+recording** — bright click on 1, dots counting the bar, a `bar 12 · 3`
+readout — and keeps clicking in time through loops, seeks, pauses and the
+speed slider.
+
+The page can't hear the track: YouTube's audio never leaves its iframe, and
+the browser won't let a page analyse it. So nothing listens. Instead the song
+carries a **beat grid** — the tempo and the time of one downbeat — and
+`beat.js` keeps that grid seated on the player's clock. Every 25 ms it reads
+the playing position, predicts where the next beats fall on the audio clock,
+and schedules clicks about a tenth of a second ahead (the same lookahead
+scheduler as the metronome page). A pause, a seek, a loop seam or a speed
+change all show up as the position straying from the prediction, and the grid
+is re-seated; small strays (the YouTube API reports time in lumps) are
+smoothed instead. Since the clicks follow the *media* clock, slowing the
+piece to 0.5x halves the metronome with it.
+
+```json
+"beat": { "bpm": 113.3, "offset": "0:19.46", "beatsPerBar": 4, "from": "0:00", "to": "5:03" }
+```
+
+| Field | Meaning |
+|---|---|
+| `bpm` | Tempo of the recording. Tenths matter: 0.5 bpm off drifts a full beat by the end of a five-minute song. |
+| `offset` | The time of **any** downbeat (`M:SS.ss`); the grid is extended both ways from it. |
+| `beatsPerBar` | Default 4. |
+| `from`, `to` | Clicks sound only between these times — trim a silent intro or a free-time ending. The readout keeps counting (dimmed) outside them. |
+| `anchors` | Downbeat times, every few bars, for a performance that wasn't played to a click. The bars between two anchors are however many the bpm says, rounded, with the beats spread evenly between — so the grid follows the drift while the bar count stays honest. |
+
+Everything is tunable on the page, so a grid can be seated by ear:
+
+- **tap** along with the music, four or more times — the tempo is the median
+  gap, and the last tap becomes a beat;
+- **set** stamps the playing position into *beat 1 at* (or *from* / *to*),
+  and ±0.02 s nudges it; **1 ▸** moves the accent one beat later when the
+  bright click lands on the wrong beat;
+- **± 0.1 bpm** until the click still agrees with the drums at the last
+  chorus — set the downbeat early in the song, then tune the tempo against
+  the end;
+- **copy** puts the tuned `"beat": {…}` on the clipboard for `songs.json`.
+  Edits persist per song in `localStorage` (under `beat:<slug>`), but only
+  while the entry in `songs.json` is unchanged — a change there wins over a
+  stale edit — and **reset** discards them.
+
+Retiming the tempo or moving the downbeat by hand drops any anchors, since
+they were measured against the old grid and would fight the new one.
+
+### Auto-detecting the beat
+
+`tools/detect_beats.py` listens to a recording and prints its `beat` object:
+
+```
+python3 tools/detect_beats.py audio/driftwood-burnin.m4a
+python3 tools/detect_beats.py 'https://youtu.be/VIDEOID' --bpm 113 --downbeat 0:19.5
+```
+
+It computes an onset-strength envelope (spectral flux on a log-mel
+spectrogram, ~86 frames a second), autocorrelates it for the tempo, tracks
+the beats with Ellis's dynamic-programming beat tracker, fits a straight line
+through them for `bpm` and `offset`, and picks the downbeat as the phase
+carrying the most onset energy. It also reports how far the real beats stray
+from that line; past `--drift` (default 60 ms) it emits `anchors` every
+`--every` bars (default 4). `--bpm` is a hint that stops it answering at half
+or double speed; `--downbeat` pins the bar phase when its own guess accents
+the backbeat; `--beats` lists every tracked beat.
+
+Needs `numpy` and `ffmpeg`, plus `yt-dlp` for a URL — **run it on your own
+machine**: YouTube refuses downloads from cloud addresses, so the detector
+can't be run from a remote Claude session. If YouTube answers 403, add
+`--cookies-from-browser safari` (or chrome, firefox, edge). The numbers are a
+first draft, like `detect_loops.py`'s: the page's tap/set/± buttons finish
+the job.
 
 ## The shifting page
 
